@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { guard } from "@/lib/adminApi";
-import { createCalendarEvent, googleConfigured, isBusy } from "@/lib/google";
+import {
+  createCalendarEvent,
+  deleteCalendarEvent,
+  googleConfigured,
+  isBusy,
+} from "@/lib/google";
 import { createZoomMeeting, zoomConfigured } from "@/lib/zoom";
 import { emailConfigured, sendEmail } from "@/lib/email";
 import { absoluteUrl, escapeHtml, formatDateTime } from "@/lib/utils";
@@ -14,7 +19,7 @@ export async function PATCH(
   if (g) return g;
 
   const body = await req.json();
-  const action = body.action as "accept" | "reject" | "notes";
+  const action = body.action as "accept" | "reject" | "notes" | "cancel";
 
   const appt = await prisma.appointment.findUnique({
     where: { id: params.id },
@@ -42,6 +47,34 @@ export async function PATCH(
           html: `<p>Hi ${escapeHtml(appt.name)},</p><p>Thank you for reaching out. Unfortunately I&apos;m unable to meet at the requested time${
             body.message ? `: ${escapeHtml(body.message)}` : "."
           }</p><p>Please feel free to propose another slot.</p><p>— Audarya</p>`,
+        });
+      } catch {
+        /* ignore */
+      }
+    }
+    return NextResponse.json({ appointment: updated });
+  }
+
+  if (action === "cancel") {
+    if (appt.calendarEventId && googleConfigured()) {
+      try {
+        await deleteCalendarEvent(appt.calendarEventId);
+      } catch {
+        /* ignore — event may already be gone */
+      }
+    }
+    const updated = await prisma.appointment.update({
+      where: { id: params.id },
+      data: { status: "cancelled", calendarEventId: null },
+    });
+    if (emailConfigured()) {
+      try {
+        await sendEmail({
+          to: appt.email,
+          subject: "Your appointment has been cancelled",
+          html: `<p>Hi ${escapeHtml(appt.name)},</p><p>I&apos;m sorry, but I&apos;ve had to cancel our appointment scheduled for <strong>${formatDateTime(appt.requestedStart)} IST</strong>${
+            body.message ? `: ${escapeHtml(body.message)}` : "."
+          }</p><p>Please feel free to book another time.</p><p>— Audarya</p>`,
         });
       } catch {
         /* ignore */

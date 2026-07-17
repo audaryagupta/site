@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, X } from "lucide-react";
+import { Check, Send, Trash2, X } from "lucide-react";
 
 interface Appt {
   id: string;
@@ -17,6 +17,24 @@ interface Appt {
   location: string | null;
 }
 
+interface CalendarItem {
+  id: string;
+  summary: string;
+  primary: boolean;
+  accessRole: string;
+}
+
+const EMPTY_INVITE = {
+  name: "",
+  email: "",
+  mode: "meet",
+  date: "",
+  time: "",
+  duration: 30,
+  purpose: "",
+  location: "",
+};
+
 export default function AppointmentsPage() {
   const [appts, setAppts] = useState<Appt[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,17 +42,42 @@ export default function AppointmentsPage() {
   const [cities, setCities] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
 
+  // Invite form
+  const [showInvite, setShowInvite] = useState(false);
+  const [invite, setInvite] = useState({ ...EMPTY_INVITE });
+  const [inviteMsg, setInviteMsg] = useState("");
+
+  // Calendar sync
+  const [calendars, setCalendars] = useState<CalendarItem[]>([]);
+  const [calConfigured, setCalConfigured] = useState(false);
+  const [writeId, setWriteId] = useState("");
+  const [busyIds, setBusyIds] = useState<string[]>([]);
+  const [calMsg, setCalMsg] = useState("");
+
   async function load() {
     const res = await fetch("/api/admin/appointments");
     const data = await res.json();
     setAppts(data.appointments || []);
     setLoading(false);
   }
+  async function loadCalendars() {
+    const res = await fetch("/api/admin/calendars");
+    const data = await res.json();
+    setCalConfigured(Boolean(data.configured));
+    setCalendars(data.calendars || []);
+    setWriteId(data.config?.writeId || "");
+    setBusyIds(data.config?.busyIds || []);
+  }
   useEffect(() => {
     load();
+    loadCalendars();
   }, []);
 
-  async function act(id: string, action: "accept" | "reject", force = false) {
+  async function act(
+    id: string,
+    action: "accept" | "reject" | "cancel",
+    force = false
+  ) {
     setBusy(id + action);
     const res = await fetch(`/api/admin/appointments/${id}`, {
       method: "PATCH",
@@ -58,8 +101,51 @@ export default function AppointmentsPage() {
     load();
   }
 
+  async function sendInvite(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy("invite");
+    setInviteMsg("");
+    const res = await fetch("/api/admin/appointments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...invite, duration: Number(invite.duration) }),
+    });
+    const data = await res.json();
+    setBusy(null);
+    if (!res.ok) {
+      setInviteMsg(data.error || "Could not send invite.");
+      return;
+    }
+    if (data.warnings?.length) setInviteMsg(data.warnings.join(" "));
+    else setInviteMsg("Invite sent.");
+    setInvite({ ...EMPTY_INVITE });
+    load();
+  }
+
+  async function saveCalendars() {
+    setBusy("calsave");
+    setCalMsg("");
+    await fetch("/api/admin/calendars", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ writeId, busyIds }),
+    });
+    setBusy(null);
+    setCalMsg("Saved.");
+    setTimeout(() => setCalMsg(""), 2500);
+  }
+
+  function toggleBusy(id: string) {
+    setBusyIds((ids) =>
+      ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]
+    );
+  }
+
   const pending = appts.filter((a) => a.status === "pending");
-  const others = appts.filter((a) => a.status !== "pending");
+  const accepted = appts.filter((a) => a.status === "accepted");
+  const others = appts.filter(
+    (a) => a.status !== "pending" && a.status !== "accepted"
+  );
 
   function fmt(iso: string) {
     return (
@@ -71,13 +157,193 @@ export default function AppointmentsPage() {
     );
   }
 
+  const input =
+    "h-9 w-full rounded-md border border-line bg-background px-3 text-sm outline-none focus:border-foreground";
+
   return (
     <div>
-      <h1 className="font-display text-2xl font-semibold">Appointments</h1>
-      <p className="mt-1 text-sm text-muted">
-        Accept to auto-create the calendar event / meeting link and email the
-        requester. Reject to send a polite decline.
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-semibold">Appointments</h1>
+          <p className="mt-1 text-sm text-muted">
+            Accept to auto-create the calendar event / meeting link and email
+            the requester. Reject to send a polite decline.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowInvite((s) => !s)}
+          className="inline-flex items-center gap-1.5 rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background"
+        >
+          <Send size={15} /> Send an invite
+        </button>
+      </div>
+
+      {/* Send-an-invite form */}
+      {showInvite && (
+        <form
+          onSubmit={sendInvite}
+          className="mt-5 rounded-lg border border-line bg-card p-5"
+        >
+          <h2 className="font-display text-lg font-semibold">Send an invite</h2>
+          <p className="mt-1 text-sm text-muted">
+            Creates a confirmed appointment, generates the meeting link /
+            calendar event, and emails the invitee.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <input
+              className={input}
+              placeholder="Invitee name"
+              required
+              value={invite.name}
+              onChange={(e) => setInvite({ ...invite, name: e.target.value })}
+            />
+            <input
+              className={input}
+              type="email"
+              placeholder="Invitee email"
+              required
+              value={invite.email}
+              onChange={(e) => setInvite({ ...invite, email: e.target.value })}
+            />
+            <select
+              className={input}
+              value={invite.mode}
+              onChange={(e) => setInvite({ ...invite, mode: e.target.value })}
+            >
+              <option value="meet">Google Meet</option>
+              <option value="zoom">Zoom</option>
+              <option value="physical">In person</option>
+            </select>
+            <select
+              className={input}
+              value={invite.duration}
+              onChange={(e) =>
+                setInvite({ ...invite, duration: Number(e.target.value) })
+              }
+            >
+              {[15, 30, 60, 90].map((d) => (
+                <option key={d} value={d}>
+                  {d} minutes
+                </option>
+              ))}
+            </select>
+            <input
+              className={input}
+              type="date"
+              required
+              value={invite.date}
+              onChange={(e) => setInvite({ ...invite, date: e.target.value })}
+            />
+            <input
+              className={input}
+              type="time"
+              required
+              value={invite.time}
+              onChange={(e) => setInvite({ ...invite, time: e.target.value })}
+            />
+            {invite.mode === "physical" && (
+              <input
+                className={`${input} sm:col-span-2`}
+                placeholder="Location / full address"
+                value={invite.location}
+                onChange={(e) =>
+                  setInvite({ ...invite, location: e.target.value })
+                }
+              />
+            )}
+            <input
+              className={`${input} sm:col-span-2`}
+              placeholder="Purpose / agenda (optional)"
+              value={invite.purpose}
+              onChange={(e) =>
+                setInvite({ ...invite, purpose: e.target.value })
+              }
+            />
+          </div>
+          <div className="mt-4 flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={busy === "invite"}
+              className="inline-flex items-center gap-1.5 rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
+            >
+              <Send size={15} />
+              {busy === "invite" ? "Sending…" : "Send invite"}
+            </button>
+            {inviteMsg && <span className="text-sm text-muted">{inviteMsg}</span>}
+          </div>
+        </form>
+      )}
+
+      {/* Google Calendar sync */}
+      <div className="mt-5 rounded-lg border border-line bg-card p-5">
+        <h2 className="font-display text-lg font-semibold">
+          Google Calendar sync
+        </h2>
+        {!calConfigured ? (
+          <p className="mt-1 text-sm text-muted">
+            Connect Google (set GOOGLE_CLIENT_ID / SECRET / REFRESH_TOKEN) to
+            choose which calendars to write to and check for conflicts.
+          </p>
+        ) : calendars.length === 0 ? (
+          <p className="mt-1 text-sm text-muted">
+            Connected, but no calendars were returned. Using{" "}
+            <code>{writeId || "primary"}</code>.
+          </p>
+        ) : (
+          <>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-1 block text-xs uppercase tracking-widest text-muted">
+                  Create events on
+                </span>
+                <select
+                  className={input}
+                  value={writeId}
+                  onChange={(e) => setWriteId(e.target.value)}
+                >
+                  {calendars.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.summary}
+                      {c.primary ? " (primary)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div>
+                <span className="mb-1 block text-xs uppercase tracking-widest text-muted">
+                  Check these for conflicts / busy
+                </span>
+                <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-line p-2">
+                  {calendars.map((c) => (
+                    <label
+                      key={c.id}
+                      className="flex items-center gap-2 rounded px-1 py-1 text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={busyIds.includes(c.id)}
+                        onChange={() => toggleBusy(c.id)}
+                      />
+                      {c.summary}
+                      {c.primary ? " (primary)" : ""}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 flex items-center gap-3">
+              <button
+                onClick={saveCalendars}
+                disabled={busy === "calsave"}
+                className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
+              >
+                {busy === "calsave" ? "Saving…" : "Save calendar sync"}
+              </button>
+              {calMsg && <span className="text-sm text-muted">{calMsg}</span>}
+            </div>
+          </>
+        )}
+      </div>
 
       {loading ? (
         <p className="mt-6 text-muted">Loading…</p>
@@ -144,7 +410,7 @@ export default function AppointmentsPage() {
                             setCities((c) => ({ ...c, [a.id]: e.target.value }))
                           }
                           placeholder="e.g. Boston, MA · Delhi office"
-                          className="h-9 w-full rounded-md border border-line bg-background px-3 text-sm outline-none focus:border-foreground"
+                          className={input}
                         />
                       </label>
                     )}
@@ -158,13 +424,60 @@ export default function AppointmentsPage() {
                           setNotes((n) => ({ ...n, [a.id]: e.target.value }))
                         }
                         placeholder="Added to the confirmation / decline email"
-                        className="h-9 w-full rounded-md border border-line bg-background px-3 text-sm outline-none focus:border-foreground"
+                        className={input}
                       />
                     </label>
                   </div>
                 </div>
               ))}
             </div>
+          )}
+
+          {accepted.length > 0 && (
+            <>
+              <h2 className="mb-3 mt-10 font-display text-lg font-semibold">
+                Upcoming ({accepted.length})
+              </h2>
+              <div className="space-y-3">
+                {accepted.map((a) => (
+                  <div
+                    key={a.id}
+                    className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-line bg-card p-4"
+                  >
+                    <div className="text-sm">
+                      <p className="font-medium">
+                        {a.name}{" "}
+                        <span className="ml-1 rounded-full bg-subtle px-2 py-0.5 text-xs uppercase tracking-wide text-muted">
+                          {a.mode}
+                        </span>
+                      </p>
+                      <p className="mt-1 text-muted">{fmt(a.requestedStart)}</p>
+                      {a.location && (
+                        <p className="mt-0.5 text-muted">📍 {a.location}</p>
+                      )}
+                      {a.meetingLink && (
+                        <a
+                          href={a.meetingLink}
+                          className="mt-0.5 block truncate text-foreground hover:underline"
+                        >
+                          {a.meetingLink}
+                        </a>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (confirm("Cancel this appointment and notify the guest?"))
+                          act(a.id, "cancel");
+                      }}
+                      disabled={!!busy}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-2 text-sm hover:bg-subtle disabled:opacity-50"
+                    >
+                      <Trash2 size={15} /> Cancel
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
 
           {others.length > 0 && (
@@ -191,15 +504,7 @@ export default function AppointmentsPage() {
                         </td>
                         <td className="px-4 py-3 text-muted">{a.mode}</td>
                         <td className="px-4 py-3">
-                          <span
-                            className={
-                              a.status === "accepted"
-                                ? "text-green-700 dark:text-green-400"
-                                : "text-muted"
-                            }
-                          >
-                            {a.status}
-                          </span>
+                          <span className="text-muted">{a.status}</span>
                         </td>
                       </tr>
                     ))}

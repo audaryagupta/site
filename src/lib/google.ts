@@ -1,4 +1,51 @@
 import { google } from "googleapis";
+import { prisma } from "./prisma";
+
+/**
+ * Which calendar new events are written to (`writeId`) and which calendars are
+ * checked for busy / out-of-office conflicts (`busyIds`). Configurable by the
+ * admin in Settings; falls back to the GOOGLE_CALENDAR_ID env var, then
+ * "primary".
+ */
+export async function getCalendarConfig(): Promise<{
+  writeId: string;
+  busyIds: string[];
+}> {
+  const rows = await prisma.setting.findMany({
+    where: { key: { in: ["gcal_write_id", "gcal_busy_ids"] } },
+  });
+  const map: Record<string, string> = {};
+  for (const r of rows) map[r.key] = r.value;
+
+  const writeId =
+    map["gcal_write_id"]?.trim() ||
+    process.env.GOOGLE_CALENDAR_ID ||
+    "primary";
+  const busyIds = (map["gcal_busy_ids"] || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return { writeId, busyIds: busyIds.length ? busyIds : [writeId] };
+}
+
+export interface CalendarSummary {
+  id: string;
+  summary: string;
+  primary: boolean;
+  accessRole: string;
+}
+
+/** Lists the calendars the connected Google account can access. */
+export async function listCalendars(): Promise<CalendarSummary[]> {
+  const calendar = getCalendar();
+  const res = await calendar.calendarList.list({ maxResults: 250 });
+  return (res.data.items || []).map((c) => ({
+    id: c.id || "",
+    summary: c.summaryOverride || c.summary || c.id || "",
+    primary: Boolean(c.primary),
+    accessRole: c.accessRole || "",
+  }));
+}
 
 export function googleConfigured(): boolean {
   return Boolean(
@@ -34,7 +81,8 @@ export interface CalendarEventInput {
 
 export async function createCalendarEvent(input: CalendarEventInput) {
   const calendar = getCalendar();
-  const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";
+  const { writeId } = await getCalendarConfig();
+  const calendarId = writeId;
 
   const res = await calendar.events.insert({
     calendarId,
@@ -73,20 +121,24 @@ export async function createCalendarEvent(input: CalendarEventInput) {
  */
 export async function isBusy(start: Date, end: Date): Promise<boolean> {
   const calendar = getCalendar();
-  const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";
+  const { busyIds } = await getCalendarConfig();
   const res = await calendar.freebusy.query({
     requestBody: {
       timeMin: start.toISOString(),
       timeMax: end.toISOString(),
-      items: [{ id: calendarId }],
+      items: busyIds.map((id) => ({ id })),
     },
   });
-  const busy = res.data.calendars?.[calendarId]?.busy || [];
-  return busy.length > 0;
+  const calendars = res.data.calendars || {};
+  return busyIds.some((id) => (calendars[id]?.busy || []).length > 0);
 }
 
 export async function deleteCalendarEvent(eventId: string) {
   const calendar = getCalendar();
-  const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";
-  await calendar.events.delete({ calendarId, eventId, sendUpdates: "all" });
+  const { writeId } = await getCalendarConfig();
+  await calendar.events.delete({
+    calendarId: writeId,
+    eventId,
+    sendUpdates: "all",
+  });
 }

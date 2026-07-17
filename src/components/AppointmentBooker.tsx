@@ -6,6 +6,9 @@ import {
   ArrowRight,
   CalendarCheck,
   Check,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
   MapPin,
   Video,
 } from "lucide-react";
@@ -28,6 +31,21 @@ const MODES = [
 
 const DURATIONS = [15, 30, 60];
 const STEPS = ["Type", "Time", "Details"] as const;
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
 function toMinutes(hhmm: string) {
   const [h, m] = hhmm.split(":").map(Number);
@@ -37,6 +55,17 @@ function toLabel(mins: number) {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+function ymd(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
+}
+function to12h(hhmm: string) {
+  const [h, m] = hhmm.split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
 export function AppointmentBooker({
@@ -67,12 +96,52 @@ export function AppointmentBooker({
     token: "",
     answer: "",
   });
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+  const [month, setMonth] = useState(
+    () => new Date(today.getFullYear(), today.getMonth(), 1)
+  );
 
   function update<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
     setForm((f) => ({ ...f, [k]: v }));
   }
 
   const kind = MODES.find((m) => m.key === form.mode)?.kind ?? "online";
+
+  // Weekdays (0–6) that have at least one published window for this mode kind.
+  const availableWeekdays = useMemo(() => {
+    const set = new Set<number>();
+    for (const w of windows) if (w.kind === kind) set.add(w.dayOfWeek);
+    return set;
+  }, [windows, kind]);
+
+  const hasWindows = windows.some((w) => w.kind === kind);
+
+  // The grid of days for the visible month.
+  const monthDays = useMemo(() => {
+    const first = new Date(month.getFullYear(), month.getMonth(), 1);
+    const daysInMonth = new Date(
+      month.getFullYear(),
+      month.getMonth() + 1,
+      0
+    ).getDate();
+    const cells: (Date | null)[] = [];
+    for (let i = 0; i < first.getDay(); i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) {
+      cells.push(new Date(month.getFullYear(), month.getMonth(), d));
+    }
+    return cells;
+  }, [month]);
+
+  function daySelectable(d: Date) {
+    if (d < today) return false;
+    // When there are published windows, only allow matching weekdays.
+    if (hasWindows) return availableWeekdays.has(d.getDay());
+    return true;
+  }
 
   // Slots for the chosen date, derived from published availability windows
   // that match the selected mode's kind and the date's weekday.
@@ -237,86 +306,169 @@ export function AppointmentBooker({
         </div>
       )}
 
-      {/* Step 2 — time */}
+      {/* Step 2 — time (Calendly-style calendar + slots) */}
       {step === 1 && (
-        <div key="step-time" className="animate-fade-up space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-2 block text-xs uppercase tracking-widest text-muted">
-                Date
-              </label>
-              <input
-                type="date"
-                className={input}
-                value={form.date}
-                onChange={(e) => {
-                  update("date", e.target.value);
-                  update("time", "");
-                }}
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-xs uppercase tracking-widest text-muted">
-                Duration
-              </label>
-              <select
-                className={input}
-                value={form.duration}
-                onChange={(e) => {
-                  update("duration", Number(e.target.value));
-                  update("time", "");
-                }}
-              >
-                {DURATIONS.map((d) => (
-                  <option key={d} value={d}>
-                    {d} minutes
-                  </option>
-                ))}
-              </select>
+        <div key="step-time" className="animate-fade-up space-y-5">
+          <div>
+            <label className="mb-2 block text-xs uppercase tracking-widest text-muted">
+              Meeting length
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {DURATIONS.map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => {
+                    update("duration", d);
+                    update("time", "");
+                  }}
+                  className={cx(
+                    "inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm transition",
+                    form.duration === d
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-line hover:bg-subtle"
+                  )}
+                >
+                  <Clock size={14} /> {d} min
+                </button>
+              ))}
             </div>
           </div>
 
-          {form.date && (
+          <div className="grid gap-6 md:grid-cols-[1fr_0.9fr]">
+            {/* Month calendar */}
+            <div className="rounded-xl border border-line p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="font-display text-base font-semibold">
+                  {MONTHS[month.getMonth()]} {month.getFullYear()}
+                </p>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    aria-label="Previous month"
+                    disabled={
+                      month.getFullYear() === today.getFullYear() &&
+                      month.getMonth() === today.getMonth()
+                    }
+                    onClick={() =>
+                      setMonth(
+                        new Date(month.getFullYear(), month.getMonth() - 1, 1)
+                      )
+                    }
+                    className="flex h-8 w-8 items-center justify-center rounded-md border border-line transition hover:bg-subtle disabled:opacity-30"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Next month"
+                    onClick={() =>
+                      setMonth(
+                        new Date(month.getFullYear(), month.getMonth() + 1, 1)
+                      )
+                    }
+                    className="flex h-8 w-8 items-center justify-center rounded-md border border-line transition hover:bg-subtle"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-7 gap-1 text-center text-[11px] uppercase tracking-wide text-muted">
+                {WEEKDAYS.map((w) => (
+                  <div key={w} className="py-1">
+                    {w}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-1 grid grid-cols-7 gap-1">
+                {monthDays.map((d, i) => {
+                  if (!d) return <div key={`e${i}`} />;
+                  const selectable = daySelectable(d);
+                  const selected = form.date === ymd(d);
+                  const isToday = ymd(d) === ymd(today);
+                  return (
+                    <button
+                      key={ymd(d)}
+                      type="button"
+                      disabled={!selectable}
+                      onClick={() => {
+                        update("date", ymd(d));
+                        update("time", "");
+                      }}
+                      className={cx(
+                        "relative flex h-9 items-center justify-center rounded-md text-sm transition",
+                        selected
+                          ? "bg-foreground font-semibold text-background"
+                          : selectable
+                            ? "hover:bg-subtle"
+                            : "cursor-default text-muted/30",
+                        isToday && !selected ? "ring-1 ring-line" : ""
+                      )}
+                    >
+                      {d.getDate()}
+                      {selectable && !selected && (
+                        <span className="absolute bottom-1 h-1 w-1 rounded-full bg-foreground/50" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {hasWindows && (
+                <p className="mt-3 text-xs text-muted">
+                  Dotted days have open{" "}
+                  {kind === "online" ? "online" : "in-person"} windows.
+                </p>
+              )}
+            </div>
+
+            {/* Times for the selected day */}
             <div>
               <label className="mb-2 block text-xs uppercase tracking-widest text-muted">
-                {slots.length > 0
-                  ? "Available times"
-                  : "Preferred time"}
+                {form.date
+                  ? new Date(`${form.date}T00:00:00`).toLocaleDateString(
+                      "en-US",
+                      { weekday: "long", month: "long", day: "numeric" }
+                    )
+                  : "Select a day"}
               </label>
-              {slots.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
+              {!form.date ? (
+                <p className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
+                  Pick a date to see available times.
+                </p>
+              ) : slots.length > 0 ? (
+                <div className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto pr-1">
                   {slots.map((s) => (
                     <button
                       type="button"
                       key={s}
                       onClick={() => update("time", s)}
                       className={cx(
-                        "rounded-full border px-4 py-2 text-sm transition",
+                        "rounded-md border px-3 py-2.5 text-sm transition",
                         form.time === s
                           ? "border-foreground bg-foreground text-background"
-                          : "border-line hover:bg-subtle"
+                          : "border-line hover:border-foreground"
                       )}
                     >
-                      {s}
+                      {to12h(s)}
                     </button>
                   ))}
                 </div>
               ) : (
-                <>
+                <div className="space-y-2">
                   <input
                     type="time"
                     className={input}
                     value={form.time}
                     onChange={(e) => update("time", e.target.value)}
                   />
-                  <p className="mt-2 text-xs text-muted">
+                  <p className="text-xs text-muted">
                     No set window that day — pick any time and I&apos;ll confirm
                     from my calendar.
                   </p>
-                </>
+                </div>
               )}
             </div>
-          )}
+          </div>
 
           <div className="flex items-center justify-between pt-2">
             <button
@@ -346,7 +498,15 @@ export function AppointmentBooker({
             <strong>
               {MODES.find((m) => m.key === form.mode)?.label}
             </strong>{" "}
-            · {form.date} at {form.time} · {form.duration} min
+            ·{" "}
+            {form.date
+              ? new Date(`${form.date}T00:00:00`).toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                })
+              : ""}{" "}
+            at {form.time ? to12h(form.time) : ""} · {form.duration} min
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <input
