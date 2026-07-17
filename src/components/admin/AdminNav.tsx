@@ -11,6 +11,7 @@ import {
   LogOut,
   Mail,
   PenLine,
+  Rocket,
   Settings,
   Sparkles,
   Users,
@@ -27,6 +28,7 @@ const links = [
   { href: "/admin/availability", label: "Availability", icon: CalendarClock },
   { href: "/admin/greetings", label: "Greetings", icon: Gift },
   { href: "/admin/now", label: "Now page", icon: Sparkles },
+  { href: "/admin/launch", label: "Launch", icon: Rocket },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
