@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     }
 
     // Remove the calendar event (best-effort) so the slot frees up.
-    if (googleConfigured() && appt.calendarEventId) {
+    if ((await googleConfigured()) && appt.calendarEventId) {
       try {
         await deleteCalendarEvent(appt.calendarEventId);
       } catch {

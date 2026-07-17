@@ -65,13 +65,14 @@ model Subscriber {
 
 // Private, admin-uploaded contacts for birthday / promotional emails
 model Contact {
-  id        String   @id @default(cuid())
-  email     String
-  firstName String   @default("")
-  lastName  String   @default("")
-  birthday  DateTime?
-  notes     String   @default("")
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  email       String
+  firstName   String   @default("")
+  lastName    String   @default("")
+  birthday    DateTime?
+  anniversary DateTime?
+  notes       String   @default("")
+  createdAt   DateTime @default(now())
 
   @@unique([email])
 }

@@ -56,7 +56,7 @@ export async function PATCH(
   }
 
   if (action === "cancel") {
-    if (appt.calendarEventId && googleConfigured()) {
+    if (appt.calendarEventId && (await googleConfigured())) {
       try {
         await deleteCalendarEvent(appt.calendarEventId);
       } catch {
@@ -108,7 +108,7 @@ export async function PATCH(
       location = body.location || "New Delhi (to be confirmed)";
     }
 
-    if (googleConfigured()) {
+    if (await googleConfigured()) {
       // Respect calendar out-of-office / busy blocks unless overridden.
       if (!body.force && (await isBusy(appt.requestedStart, appt.requestedEnd))) {
         return NextResponse.json({

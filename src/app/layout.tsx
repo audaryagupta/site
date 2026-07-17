@@ -29,8 +29,8 @@ const serif = Lora({
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: {
-    default: `${site.name} — ${site.tagline}`,
-    template: `%s — ${site.name}`,
+    default: `${site.name} | The Personal Blog of Audarya Gupta`,
+    template: `%s | ${site.name}`,
   },
   description: site.description,
   openGraph: {

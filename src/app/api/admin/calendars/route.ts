@@ -8,7 +8,7 @@ export async function GET() {
   if (g) return g;
 
   const config = await getCalendarConfig();
-  if (!googleConfigured()) {
+  if (!(await googleConfigured())) {
     return NextResponse.json({ configured: false, calendars: [], config });
   }
   try {

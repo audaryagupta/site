@@ -6,6 +6,7 @@ import { signOut } from "next-auth/react";
 import {
   CalendarClock,
   CalendarDays,
+  CalendarRange,
   Gift,
   LayoutDashboard,
   LogOut,
@@ -26,6 +27,7 @@ const links = [
   { href: "/admin/subscribers", label: "Subscribers", icon: Users },
   { href: "/admin/contacts", label: "Contacts", icon: Users },
   { href: "/admin/appointments", label: "Appointments", icon: CalendarDays },
+  { href: "/admin/calendar", label: "Calendar", icon: CalendarRange },
   { href: "/admin/availability", label: "Availability", icon: CalendarClock },
   { href: "/admin/greetings", label: "Greetings", icon: Gift },
   { href: "/admin/now", label: "Now page", icon: Sparkles },

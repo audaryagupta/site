@@ -69,7 +69,7 @@ export async function POST(req: Request) {
       }
     }
 
-    if (googleConfigured()) {
+    if (await googleConfigured()) {
       const result = await createCalendarEvent({
         summary: `${data.mode === "physical" ? "Meeting" : "Call"} with ${data.name}`,
         description: data.purpose,
