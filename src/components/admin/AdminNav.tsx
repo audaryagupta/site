@@ -4,9 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
+  BarChart3,
   CalendarClock,
   CalendarDays,
   CalendarRange,
+  FileSignature,
   Gamepad2,
   Gift,
   LayoutDashboard,
@@ -32,6 +34,8 @@ const links = [
   { href: "/admin/calendar", label: "Calendar", icon: CalendarRange },
   { href: "/admin/availability", label: "Availability", icon: CalendarClock },
   { href: "/admin/greetings", label: "Greetings", icon: Gift },
+  { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/admin/letterhead", label: "Letterhead", icon: FileSignature },
   { href: "/admin/games", label: "Games", icon: Gamepad2 },
   { href: "/admin/logs", label: "Activity log", icon: ScrollText },
   { href: "/admin/now", label: "Now page", icon: Sparkles },

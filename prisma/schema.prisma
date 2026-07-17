@@ -23,7 +23,10 @@ model Article {
   seoTitle        String?
   seoDescription  String?
   readingMinutes  Int       @default(1)
-  views           Int       @default(0)
+  views           Int       @default(0)   // real, tracked views
+  likes           Int       @default(0)   // real, tracked likes
+  viewsBoost      Int       @default(0)   // added to the PUBLIC view count only
+  likesBoost      Int       @default(0)   // added to the PUBLIC like count only
   notifiedAt      DateTime?                 // when subscribers were emailed about this article
   publishedAt     DateTime?
   createdAt       DateTime  @default(now())

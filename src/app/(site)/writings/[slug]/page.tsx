@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { Container } from "@/components/Container";
 import { ArticleBody } from "@/components/ArticleBody";
 import { ShareButtons } from "@/components/ShareButtons";
-import { ViewCounter } from "@/components/ViewCounter";
+import { ArticleEngagement } from "@/components/ArticleEngagement";
 import { ArticleCard } from "@/components/ArticleCard";
 import { Comments } from "@/components/Comments";
 import { getArticleBySlug, getRelatedArticles } from "@/lib/queries";
@@ -48,7 +48,6 @@ export default async function ArticlePage({
 
   return (
     <article>
-      <ViewCounter slug={article.slug} />
 
       {/* Header */}
       <Container className="max-w-3xl pt-14 text-center">
@@ -70,6 +69,13 @@ export default async function ArticlePage({
           By {site.author} · {formatDate(article.publishedAt)} ·{" "}
           {article.readingMinutes} min read
         </p>
+        <div className="mt-4">
+          <ArticleEngagement
+            slug={article.slug}
+            views={article.views + article.viewsBoost}
+            likes={article.likes + article.likesBoost}
+          />
+        </div>
       </Container>
 
       {/* Cover */}
