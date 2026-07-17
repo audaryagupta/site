@@ -82,6 +82,30 @@ export async function translateHtml(
 
 /* -------------------- Weekly news recap -------------------- */
 
+// Outlets to exclude from the recap — overly political / general-news channels.
+const BLOCKED_SOURCES = [
+  "bbc",
+  "al jazeera",
+  "aljazeera",
+  "fox news",
+  "foxnews",
+  "breitbart",
+  "the daily wire",
+  "dailywire",
+  "msnbc",
+  "newsmax",
+  "one america",
+  "oann",
+  "rt.com",
+  "russia today",
+  "sputnik",
+];
+
+function isBlockedSource(name?: string, url?: string): boolean {
+  const hay = `${name || ""} ${url || ""}`.toLowerCase();
+  return BLOCKED_SOURCES.some((s) => hay.includes(s));
+}
+
 async function fetchNews(): Promise<
   { title: string; description: string; url: string; image?: string; source?: string }[]
 > {
@@ -120,6 +144,7 @@ async function fetchNews(): Promise<
         };
         for (const a of data.articles || []) {
           if (!a.title || !a.url) continue;
+          if (isBlockedSource(a.source?.name, a.url)) continue;
           all.push({
             title: a.title,
             description: a.description || "",
@@ -152,7 +177,7 @@ export async function generateRecap(): Promise<{
 
   const system = `You are the editor of "The Weekly Recap", a weekly newsletter by Audarya Gupta covering the most important news in business, finance and technology — both international and United States. You write with insight, concision and a warm personal voice.`;
 
-  const sourceGuidance = `Prefer highly reputable, widely-accessible sources (e.g. Reuters, AP, BBC, Financial Times, The Economist, Bloomberg, The Wall Street Journal, MIT Technology Review, official company/government press releases). Avoid low-quality, paywalled-only or sensational outlets. Every story MUST carry a real, direct link to the original source article so readers can click straight through.`;
+  const sourceGuidance = `Prefer highly reputable, widely-accessible, business/finance/tech-focused sources (e.g. Reuters, Associated Press, Financial Times, The Economist, Bloomberg, The Wall Street Journal, CNBC, MIT Technology Review, The Verge, TechCrunch, and official company/government/regulator press releases). Avoid low-quality, sensational, or politically-slanted general-news channels — specifically do NOT use BBC, Al Jazeera, Fox News, or similar politically-charged outlets. Every story MUST carry a real, direct link to the original source article so readers can click straight through.`;
 
   const groundingBlock = grounded
     ? `Here are candidate headlines from this week (JSON). Select and rank the 10 most important, mixing international and US stories across business, finance and tech. ${sourceGuidance} Use ONLY urls, sources and image links from this list. Do not invent URLs.\n\n${JSON.stringify(
