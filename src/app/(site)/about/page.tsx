@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Container } from "@/components/Container";
 import { SocialIcons } from "@/components/SocialIcons";
+import { LogoMark } from "@/components/Logo";
 import { getSettings } from "@/lib/queries";
 
 export const revalidate = 60;
@@ -44,9 +45,7 @@ export default async function AboutPage() {
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center">
-                <span className="font-display text-3xl italic text-muted/50">
-                  by AUDARYA
-                </span>
+                <LogoMark imgClassName="h-12 opacity-25" />
               </div>
             )}
           </div>

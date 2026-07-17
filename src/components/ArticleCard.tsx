@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { formatDate } from "@/lib/utils";
+import { LogoMark } from "@/components/Logo";
 
 export interface ArticleCardData {
   slug: string;
@@ -35,9 +36,7 @@ export function ArticleCard({
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
-            <span className="font-display text-3xl italic text-muted/50">
-              by AUDARYA
-            </span>
+            <LogoMark imgClassName="h-10 opacity-30" />
           </div>
         )}
       </Link>

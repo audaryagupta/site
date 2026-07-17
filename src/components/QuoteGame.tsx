@@ -43,22 +43,38 @@ export function QuoteGame({ rounds }: { rounds: QuoteRound[] }) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Background
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    // Border
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 4;
-    ctx.strokeRect(40, 40, canvas.width - 80, canvas.height - 80);
-    ctx.lineWidth = 1;
-    ctx.strokeRect(58, 58, canvas.width - 116, canvas.height - 116);
+    const render = (logo?: HTMLImageElement) => {
+      // Background
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Border
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 4;
+      ctx.strokeRect(40, 40, canvas.width - 80, canvas.height - 80);
+      ctx.lineWidth = 1;
+      ctx.strokeRect(58, 58, canvas.width - 116, canvas.height - 116);
 
-    ctx.fillStyle = "#000000";
-    ctx.textAlign = "center";
+      ctx.fillStyle = "#000000";
+      ctx.textAlign = "center";
 
-    ctx.font = "italic 30px Georgia, serif";
-    ctx.fillText("byAudarya", canvas.width / 2, 170);
+      if (logo && logo.width) {
+        const h = 56;
+        const w = (logo.width / logo.height) * h;
+        ctx.drawImage(logo, (canvas.width - w) / 2, 120, w, h);
+      } else {
+        ctx.font = "italic 30px Georgia, serif";
+        ctx.fillText("byAudarya", canvas.width / 2, 170);
+      }
 
+      drawBody();
+
+      const link = document.createElement("a");
+      link.download = "byaudarya-who-said-it-certificate.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    };
+
+    const drawBody = () => {
     ctx.font = "22px Georgia, serif";
     ctx.fillText("CERTIFICATE OF CURIOSITY", canvas.width / 2, 220);
 
@@ -89,11 +105,12 @@ export function QuoteGame({ rounds }: { rounds: QuoteRound[] }) {
       730
     );
     ctx.fillText("www.byaudarya.com", canvas.width / 2, 765);
+    };
 
-    const link = document.createElement("a");
-    link.download = "byaudarya-who-said-it-certificate.png";
-    link.href = canvas.toDataURL("image/png");
-    link.click();
+    const logo = new Image();
+    logo.onload = () => render(logo);
+    logo.onerror = () => render();
+    logo.src = "/logo.png";
   }
 
   if (finished) {

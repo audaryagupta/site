@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Container } from "@/components/Container";
 import { SubscribeForm } from "@/components/SubscribeForm";
+import { LogoMark } from "@/components/Logo";
 import { getPublishedArticles, getUsedTopics } from "@/lib/queries";
 import { formatDate } from "@/lib/utils";
 
@@ -50,9 +51,7 @@ export default async function HomePage() {
           <div className="hidden md:block">
             {/* Image slot — replace with a portrait/brand image in the dashboard */}
             <div className="flex aspect-[4/5] items-center justify-center rounded-sm border border-line bg-subtle">
-              <span className="font-display text-4xl italic text-muted/50">
-                by AUDARYA
-              </span>
+              <LogoMark imgClassName="h-16 opacity-25" />
             </div>
           </div>
         </Container>
@@ -91,9 +90,7 @@ export default async function HomePage() {
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">
-                      <span className="font-display text-4xl italic text-muted/50">
-                        by AUDARYA
-                      </span>
+                      <LogoMark imgClassName="h-14 opacity-25" />
                     </div>
                   )}
                 </div>

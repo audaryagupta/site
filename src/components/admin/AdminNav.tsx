@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import { cx } from "@/lib/utils";
+import { LogoMark } from "@/components/Logo";
 
 const links = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
@@ -36,10 +37,9 @@ export function AdminNav({ email }: { email?: string | null }) {
   const pathname = usePathname();
   return (
     <aside className="flex w-60 flex-none flex-col border-r border-line bg-subtle/40 p-4">
-      <Link href="/admin" className="mb-8 mt-2 px-2 font-display text-xl">
-        <span className="italic">by</span>{" "}
-        <span className="tracking-[0.18em]">AUDARYA</span>
-        <span className="ml-1 align-super text-[10px] uppercase tracking-widest text-muted">
+      <Link href="/admin" className="mb-8 mt-2 flex items-center gap-1.5 px-2">
+        <LogoMark imgClassName="h-7" />
+        <span className="align-super text-[10px] uppercase tracking-widest text-muted">
           studio
         </span>
       </Link>
