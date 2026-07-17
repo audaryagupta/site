@@ -18,12 +18,16 @@ COPY . .
 # A build-time DATABASE_URL is required for `prisma generate`/next build.
 ENV DATABASE_URL="file:/data/prod.db"
 RUN npx prisma generate
+# Create an empty schema DB so pages that read Prisma can be prerendered.
+# At runtime this is replaced by the persistent volume mounted at /data.
+RUN mkdir -p /data && npx prisma db push --skip-generate
 RUN npm run build
 
 # ---- runner ----
 FROM base AS runner
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 # Persisted SQLite database lives on a mounted volume at /data
 ENV DATABASE_URL="file:/data/prod.db"
 
