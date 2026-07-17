@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, CalendarCheck } from "lucide-react";
+import { ArrowRight, CalendarCheck, Mail } from "lucide-react";
 import { Container } from "@/components/Container";
 import { ContactForm } from "@/components/ContactForm";
 import { SocialIcons } from "@/components/SocialIcons";
@@ -21,97 +21,132 @@ export default async function ContactPage() {
   const online = availability.filter((a) => a.kind === "online");
   const offline = availability.filter((a) => a.kind === "offline");
   return (
-    <Container className="py-16">
-      <header className="mb-12 max-w-2xl">
-        <h1 className="font-display text-5xl font-semibold tracking-tight">
-          Let&apos;s talk.
-        </h1>
-        <p className="mt-4 font-serif text-lg text-muted">
-          Whether it&apos;s an idea, a collaboration, or a conversation — reach
-          out or book a time on my calendar.
-        </p>
-      </header>
+    <>
+      <section className="relative overflow-hidden border-b border-line bg-subtle/35">
+        <Container className="grid gap-10 py-16 lg:grid-cols-[0.95fr_1.05fr] lg:items-center lg:py-20">
+          <div className="animate-fade-up">
+            <p className="text-xs uppercase tracking-[0.25em] text-muted">
+              Contact
+            </p>
+            <h1 className="mt-4 max-w-2xl font-display text-5xl font-semibold leading-tight tracking-tight md:text-6xl">
+              Let&apos;s turn a good idea into a conversation.
+            </h1>
+            <p className="mt-5 max-w-xl font-serif text-xl leading-relaxed text-muted">
+              Whether it&apos;s a collaboration, a question, an interview, or a
+              calendar request — send the context and I&apos;ll reply from there.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <a
+                href={`mailto:${site.email}`}
+                className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-medium text-background transition hover:-translate-y-0.5"
+              >
+                <Mail size={16} /> {site.email}
+              </a>
+              <Link
+                href="/appointments"
+                className="inline-flex items-center gap-2 rounded-full border border-line bg-background/70 px-5 py-3 text-sm text-muted backdrop-blur transition hover:-translate-y-0.5 hover:text-foreground"
+              >
+                <CalendarCheck size={16} /> Request time
+              </Link>
+            </div>
+          </div>
 
-      <div className="grid gap-16 lg:grid-cols-2">
-        <section>
-          <h2 className="font-display text-2xl font-semibold">Send a message</h2>
+          <div className="relative h-[480px]">
+            <div className="absolute inset-0 overflow-hidden rounded-[2rem] border border-line bg-card shadow-2xl shadow-foreground/10">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/audarya/audarya-parliament-wide.jpg"
+                alt="Audarya Gupta at Parliament House"
+                className="h-full w-full object-cover"
+              />
+            </div>
+            <div className="absolute bottom-5 left-5 right-5 rounded-2xl border border-white/25 bg-black/55 p-5 text-white backdrop-blur">
+              <p className="text-xs uppercase tracking-[0.2em] text-white/65">
+                Based in New Delhi
+              </p>
+              <p className="mt-2 font-serif text-lg">
+                Available for editorial, business, academic and speaking
+                conversations.
+              </p>
+            </div>
+          </div>
+        </Container>
+      </section>
+
+      <Container className="grid gap-10 py-16 lg:grid-cols-[1fr_0.9fr]">
+        <section className="rounded-2xl border border-line bg-card p-6 shadow-xl shadow-foreground/5 md:p-8">
+          <h2 className="font-display text-3xl font-semibold">Send a message</h2>
           <p className="mt-2 text-sm text-muted">
             I read everything that comes in.
           </p>
           <div className="mt-6">
             <ContactForm />
           </div>
+        </section>
 
-          <div className="mt-10 space-y-3 border-t border-line pt-6 text-sm text-muted">
-            <p>
-              Email:{" "}
-              <a
-                href={`mailto:${site.email}`}
-                className="text-foreground hover:underline"
-              >
-                {site.email}
-              </a>
+        <section id="book" className="space-y-6">
+          <div className="rounded-2xl border border-line bg-card p-6 md:p-8">
+            <h2 className="font-display text-3xl font-semibold">
+              Book an appointment
+            </h2>
+            <p className="mt-2 font-serif text-muted">
+              Request a Google Meet, Zoom, or in-person meeting. Name, email,
+              purpose, date and time are required so calendar invitations and
+              updates reach the right person.
             </p>
+
+            {availability.length > 0 && (
+              <div className="mt-6 rounded-xl border border-line bg-subtle/50 p-4 text-sm">
+                <p className="text-xs uppercase tracking-widest text-muted">
+                  Current availability
+                </p>
+                {online.length > 0 && (
+                  <p className="mt-2">
+                    <strong>Online:</strong>{" "}
+                    {online
+                      .map(
+                        (w) => `${DAYS[w.dayOfWeek]} ${w.startTime}–${w.endTime}`
+                      )
+                      .join(" · ")}
+                  </p>
+                )}
+                {offline.length > 0 && (
+                  <p className="mt-1">
+                    <strong>In person:</strong>{" "}
+                    {offline
+                      .map(
+                        (w) =>
+                          `${w.city || "TBC"} — ${DAYS[w.dayOfWeek]} ${w.startTime}–${w.endTime}`
+                      )
+                      .join(" · ")}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="mt-6">
+              <Link
+                href="/appointments"
+                className="group inline-flex h-12 items-center gap-2 rounded-full bg-foreground px-6 text-sm font-medium text-background transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-foreground/10"
+              >
+                <CalendarCheck size={17} />
+                Make an appointment
+                <ArrowRight
+                  size={16}
+                  className="transition-transform group-hover:translate-x-0.5"
+                />
+              </Link>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-line bg-subtle/60 p-6 text-sm text-muted">
             <p>New Delhi, India</p>
-            <div className="pt-2">
+            <div className="mt-4">
               <SocialIcons size={18} />
             </div>
           </div>
         </section>
-
-        <section id="book">
-          <h2 className="font-display text-2xl font-semibold">
-            Book an appointment
-          </h2>
-          <p className="mt-2 text-sm text-muted">
-            Request a Google Meet, Zoom, or in-person meeting. I&apos;ll confirm
-            from my calendar.
-          </p>
-
-          {availability.length > 0 && (
-            <div className="mt-6 rounded-lg border border-line bg-subtle/50 p-4 text-sm">
-              <p className="text-xs uppercase tracking-widest text-muted">
-                Current availability
-              </p>
-              {online.length > 0 && (
-                <p className="mt-2">
-                  <strong>Online:</strong>{" "}
-                  {online
-                    .map(
-                      (w) => `${DAYS[w.dayOfWeek]} ${w.startTime}–${w.endTime}`
-                    )
-                    .join(" · ")}
-                </p>
-              )}
-              {offline.length > 0 && (
-                <p className="mt-1">
-                  <strong>In person:</strong>{" "}
-                  {offline
-                    .map(
-                      (w) =>
-                        `${w.city || "TBC"} — ${DAYS[w.dayOfWeek]} ${w.startTime}–${w.endTime}`
-                    )
-                    .join(" · ")}
-                </p>
-              )}
-            </div>
-          )}
-
-          <div className="mt-6">
-            <Link
-              href="/appointments"
-              className="group inline-flex h-12 items-center gap-2 rounded-md bg-foreground px-6 text-sm font-medium text-background transition hover:opacity-90"
-            >
-              <CalendarCheck size={17} />
-              Make an appointment
-              <ArrowRight
-                size={16}
-                className="transition-transform group-hover:translate-x-0.5"
-              />
-            </Link>
-          </div>
-        </section>
-      </div>
-    </Container>
+      </Container>
+    </>
   );
 }

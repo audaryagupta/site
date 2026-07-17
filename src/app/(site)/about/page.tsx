@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Container } from "@/components/Container";
 import { SocialIcons } from "@/components/SocialIcons";
-import { LogoMark } from "@/components/Logo";
 import { getSettings } from "@/lib/queries";
 
 export const revalidate = 60;
@@ -19,6 +18,12 @@ Apart from these pursuits, I enjoy learning languages — I speak French semi-fl
 
 I look forward to engaging with you all. Please don’t hesitate to reach out.`;
 
+const moments = [
+  ["Finance", "Markets, business models, incentives and the stories behind capital."],
+  ["Public life", "Governance, institutions and the ideas that shape decisions."],
+  ["Curiosity", "Languages, history, technology, books and field notes from travel."],
+];
+
 export default async function AboutPage() {
   const settings = await getSettings([
     "about_bio",
@@ -29,47 +34,83 @@ export default async function AboutPage() {
   const bio = settings.about_bio || DEFAULT_BIO;
   const title = settings.about_title || "Audarya Gupta";
   const role = settings.about_role || "Founder, byAudarya & VentureBuz";
+  const portrait = settings.about_image || "/audarya/audarya-portrait-blue.jpg";
 
   return (
-    <Container className="py-16">
-      <div className="grid gap-12 md:grid-cols-[0.9fr_1.4fr]">
-        <div>
-          {/* Image slot — set "about_image" in the dashboard */}
-          <div className="aspect-[4/5] overflow-hidden rounded-sm border border-line bg-subtle">
-            {settings.about_image ? (
-              // eslint-disable-next-line @next/next/no-img-element
+    <>
+      <section className="relative overflow-hidden border-b border-line bg-subtle/35">
+        <Container className="grid gap-12 py-16 lg:grid-cols-[0.9fr_1.1fr] lg:items-end lg:py-20">
+          <div className="relative h-[560px] max-h-[76vh]">
+            <div className="absolute inset-x-10 top-0 h-[84%] overflow-hidden rounded-[2rem] border border-line bg-card shadow-2xl shadow-foreground/10 lg:left-0 lg:right-16">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={settings.about_image}
+                src={portrait}
                 alt={title}
                 className="h-full w-full object-cover"
               />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center">
-                <LogoMark imgClassName="h-12 opacity-25" />
-              </div>
-            )}
+            </div>
+            <div className="absolute bottom-0 right-0 w-56 overflow-hidden rounded-2xl border-4 border-background bg-card shadow-xl shadow-foreground/15">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/audarya/audarya-parliament-wide.jpg"
+                alt="Audarya Gupta at Parliament House"
+                className="h-64 w-full object-cover"
+              />
+            </div>
           </div>
-          <div className="mt-6">
-            <SocialIcons size={20} />
-          </div>
-        </div>
 
-        <div>
-          <p className="text-xs uppercase tracking-[0.25em] text-muted">
-            About Me
-          </p>
-          <h1 className="mt-3 font-display text-5xl font-semibold tracking-tight">
-            {title}
-          </h1>
-          <p className="mt-2 font-serif text-lg italic text-muted">{role}</p>
-
-          <div className="mt-8 space-y-5 font-serif text-lg leading-relaxed">
-            {bio.split("\n\n").map((para, i) => (
-              <p key={i}>{para}</p>
-            ))}
+          <div className="animate-fade-up">
+            <p className="text-xs uppercase tracking-[0.25em] text-muted">
+              About Me
+            </p>
+            <h1 className="mt-4 max-w-2xl font-display text-5xl font-semibold leading-tight tracking-tight md:text-6xl">
+              {title}
+            </h1>
+            <p className="mt-3 font-serif text-xl italic text-muted">{role}</p>
+            <div className="mt-8 grid gap-3 sm:grid-cols-3">
+              {moments.map(([label, copy]) => (
+                <div
+                  key={label}
+                  className="rounded-2xl border border-line bg-background/70 p-4 backdrop-blur"
+                >
+                  <h2 className="font-display text-lg font-semibold">{label}</h2>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">{copy}</p>
+                </div>
+              ))}
+            </div>
           </div>
+        </Container>
+      </section>
+
+      <Container className="grid gap-12 py-16 lg:grid-cols-[1fr_0.7fr]">
+        <div className="space-y-5 font-serif text-lg leading-relaxed">
+          {bio.split("\n\n").map((para, i) => (
+            <p key={i}>{para}</p>
+          ))}
         </div>
-      </div>
-    </Container>
+        <aside className="space-y-6">
+          <div className="rounded-2xl border border-line bg-card p-6">
+            <p className="text-xs uppercase tracking-[0.22em] text-muted">
+              Connect
+            </p>
+            <p className="mt-3 font-serif text-muted">
+              Essays, collaborations, speaking requests and appointments all
+              start with a simple message.
+            </p>
+            <div className="mt-5">
+              <SocialIcons size={20} />
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-2xl border border-line bg-card">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/audarya/audarya-car.jpg"
+              alt="Audarya with a model car"
+              className="h-72 w-full object-cover"
+            />
+          </div>
+        </aside>
+      </Container>
+    </>
   );
 }
