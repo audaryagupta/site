@@ -9,6 +9,13 @@ const nextConfig = {
   // are kept identical (/post/<slug> -> /writings/<slug>).
   async redirects() {
     return [
+      // Canonicalise the bare apex to www so there's a single indexed host.
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "byaudarya.com" }],
+        destination: "https://www.byaudarya.com/:path*",
+        permanent: true,
+      },
       { source: "/post/:slug", destination: "/writings/:slug", permanent: true },
       { source: "/blog", destination: "/writings", permanent: true },
       { source: "/blog/:path*", destination: "/writings", permanent: true },
