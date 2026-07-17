@@ -24,6 +24,49 @@ export async function accessLevel(
   return null;
 }
 
+// When the console lives on a subdomain (studio.byaudarya.com) but the OAuth
+// callback runs on the primary host (www.byaudarya.com), the auth cookie must be
+// shared across *.byaudarya.com. Set AUTH_COOKIE_DOMAIN=".byaudarya.com" at
+// cutover. Left empty for the *.fly.dev preview so it keeps working normally.
+const cookieDomain = (process.env.AUTH_COOKIE_DOMAIN || "").trim();
+const useSecureCookies = (process.env.NEXTAUTH_URL || "").startsWith("https://");
+const securePrefix = useSecureCookies ? "__Secure-" : "";
+
+const sharedCookies: NextAuthOptions["cookies"] = cookieDomain
+  ? {
+      sessionToken: {
+        name: `${securePrefix}next-auth.session-token`,
+        options: {
+          httpOnly: true,
+          sameSite: "lax",
+          path: "/",
+          secure: useSecureCookies,
+          domain: cookieDomain,
+        },
+      },
+      callbackUrl: {
+        name: `${securePrefix}next-auth.callback-url`,
+        options: {
+          sameSite: "lax",
+          path: "/",
+          secure: useSecureCookies,
+          domain: cookieDomain,
+        },
+      },
+      // Note: no __Host- prefix — that prefix forbids a Domain attribute.
+      csrfToken: {
+        name: "next-auth.csrf-token",
+        options: {
+          httpOnly: true,
+          sameSite: "lax",
+          path: "/",
+          secure: useSecureCookies,
+          domain: cookieDomain,
+        },
+      },
+    }
+  : undefined;
+
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
@@ -33,6 +76,7 @@ export const authOptions: NextAuthOptions = {
   ],
   session: { strategy: "jwt" },
   secret: process.env.NEXTAUTH_SECRET,
+  ...(sharedCookies ? { cookies: sharedCookies } : {}),
   callbacks: {
     // Any Google account may sign in (needed for public article comments).
     // Admin-only areas are gated separately via requireAdmin()/requireOwner().
