@@ -42,12 +42,16 @@ export async function middleware(req: NextRequest) {
   if (!consolePath) return NextResponse.next();
 
   const finish = () => {
-    if (rewrite) {
-      const url = req.nextUrl.clone();
-      url.pathname = consolePath as string;
-      return NextResponse.rewrite(url);
-    }
-    return NextResponse.next();
+    const res = rewrite
+      ? (() => {
+          const url = req.nextUrl.clone();
+          url.pathname = consolePath as string;
+          return NextResponse.rewrite(url);
+        })()
+      : NextResponse.next();
+    // The console must never be indexed or advertised on search engines.
+    res.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+    return res;
   };
 
   // Login page is public.
@@ -55,7 +59,10 @@ export async function middleware(req: NextRequest) {
 
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
   const email = (token?.email || "").toString().toLowerCase().trim();
-  const authorized = Boolean(email) && email === adminEmail;
+  // The jwt callback stamps isAdmin (owner OR active team member). Fall back to
+  // the owner email if the claim is somehow absent.
+  const authorized =
+    Boolean(token?.isAdmin) || (Boolean(email) && email === adminEmail);
 
   if (!authorized) {
     if (consolePath.startsWith("/api/")) {
