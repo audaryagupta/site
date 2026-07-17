@@ -10,6 +10,7 @@ import {
   Video,
 } from "lucide-react";
 import { cx } from "@/lib/utils";
+import { Captcha, type CaptchaValue } from "./Captcha";
 
 type Window = {
   kind: string;
@@ -55,6 +56,10 @@ export function AppointmentBooker({ windows = [] }: { windows?: Window[] }) {
     "idle"
   );
   const [error, setError] = useState("");
+  const [captcha, setCaptcha] = useState<CaptchaValue>({
+    token: "",
+    answer: "",
+  });
 
   function update<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -91,7 +96,11 @@ export function AppointmentBooker({ windows = [] }: { windows?: Window[] }) {
       const res = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          captchaToken: captcha.token,
+          captchaAnswer: captcha.answer,
+        }),
       });
       if (!res.ok) {
         const d = await res.json();
@@ -358,6 +367,8 @@ export function AppointmentBooker({ windows = [] }: { windows?: Window[] }) {
             onChange={(e) => update("purpose", e.target.value)}
           />
 
+          <Captcha onChange={setCaptcha} />
+
           {status === "error" && (
             <p className="text-sm text-red-500">{error}</p>
           )}
@@ -372,8 +383,8 @@ export function AppointmentBooker({ windows = [] }: { windows?: Window[] }) {
             </button>
             <button
               type="submit"
-              disabled={status === "loading"}
-              className="inline-flex h-11 items-center gap-2 rounded-md bg-foreground px-6 text-sm font-medium text-background transition hover:opacity-90 disabled:opacity-60"
+              disabled={status === "loading" || !captcha.token}
+              className="inline-flex h-11 items-center gap-2 rounded-md bg-foreground px-6 text-sm font-medium text-background transition hover:opacity-90 disabled:opacity-40"
             >
               <CalendarCheck size={16} />
               {status === "loading" ? "Sending…" : "Send request"}
