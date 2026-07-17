@@ -1,0 +1,79 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
+import {
+  CalendarDays,
+  LayoutDashboard,
+  LogOut,
+  Mail,
+  PenLine,
+  Settings,
+  Sparkles,
+  Users,
+} from "lucide-react";
+import { cx } from "@/lib/utils";
+
+const links = [
+  { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
+  { href: "/admin/writings", label: "Writings", icon: PenLine },
+  { href: "/admin/newsletters", label: "Newsletters", icon: Mail },
+  { href: "/admin/subscribers", label: "Subscribers", icon: Users },
+  { href: "/admin/contacts", label: "Contacts", icon: Users },
+  { href: "/admin/appointments", label: "Appointments", icon: CalendarDays },
+  { href: "/admin/now", label: "Now page", icon: Sparkles },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
+];
+
+export function AdminNav({ email }: { email?: string | null }) {
+  const pathname = usePathname();
+  return (
+    <aside className="flex w-60 flex-none flex-col border-r border-line bg-subtle/40 p-4">
+      <Link href="/admin" className="mb-8 mt-2 px-2 font-display text-xl">
+        <span className="italic">by</span>{" "}
+        <span className="tracking-[0.18em]">AUDARYA</span>
+        <span className="ml-1 align-super text-[10px] uppercase tracking-widest text-muted">
+          studio
+        </span>
+      </Link>
+      <nav className="flex-1 space-y-1">
+        {links.map((l) => {
+          const active = l.exact
+            ? pathname === l.href
+            : pathname.startsWith(l.href);
+          const Icon = l.icon;
+          return (
+            <Link
+              key={l.href}
+              href={l.href}
+              className={cx(
+                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
+                active
+                  ? "bg-foreground text-background"
+                  : "text-muted hover:bg-subtle hover:text-foreground"
+              )}
+            >
+              <Icon size={16} /> {l.label}
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="mt-4 border-t border-line pt-4">
+        <p className="truncate px-3 text-xs text-muted">{email}</p>
+        <button
+          onClick={() => signOut({ callbackUrl: "/" })}
+          className="mt-2 flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-muted transition hover:bg-subtle hover:text-foreground"
+        >
+          <LogOut size={16} /> Sign out
+        </button>
+        <Link
+          href="/"
+          className="mt-1 block px-3 py-2 text-xs text-muted hover:text-foreground"
+        >
+          ← View live site
+        </Link>
+      </div>
+    </aside>
+  );
+}
