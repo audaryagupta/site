@@ -51,23 +51,27 @@ export default async function ContactPage() {
             </div>
           </div>
 
-          <div className="relative h-[480px]">
-            <div className="absolute inset-0 overflow-hidden rounded-[2rem] border border-line bg-card shadow-2xl shadow-foreground/10">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/audarya/audarya-parliament-wide.jpg"
-                alt="Audarya Gupta at Parliament House"
-                className="h-full w-full object-cover"
-              />
-            </div>
-            <div className="absolute bottom-5 left-5 right-5 rounded-2xl border border-white/25 bg-black/55 p-5 text-white backdrop-blur">
-              <p className="text-xs uppercase tracking-[0.2em] text-white/65">
-                Based in New Delhi
-              </p>
-              <p className="mt-2 font-serif text-lg">
-                Available for editorial, business, academic and speaking
-                conversations.
-              </p>
+          <div className="rounded-[2rem] border border-line bg-card p-8 shadow-2xl shadow-foreground/5">
+            <p className="text-xs uppercase tracking-[0.22em] text-muted">
+              Before you write
+            </p>
+            <p className="mt-6 font-serif text-4xl leading-tight">
+              Send the context: what you want to discuss, why it matters, and
+              what a useful outcome would look like.
+            </p>
+            <div className="mt-8 grid gap-3 border-t border-line pt-6 sm:grid-cols-3">
+              {[
+                "Editorial",
+                "Business",
+                "Speaking",
+              ].map((label) => (
+                <span
+                  key={label}
+                  className="rounded-full border border-line px-3 py-2 text-center text-xs uppercase tracking-widest text-muted"
+                >
+                  {label}
+                </span>
+              ))}
             </div>
           </div>
         </Container>
