@@ -37,6 +37,21 @@ model Tag {
   articles Article[] @relation("ArticleTags")
 }
 
+// Reader comments on articles. Requires Google sign-in (authorEmail captured
+// from the session); posts appear immediately. Admin can delete.
+model Comment {
+  id          String   @id @default(cuid())
+  articleSlug String
+  authorName  String
+  authorEmail String
+  authorImage String   @default("")
+  body        String
+  hidden      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([articleSlug])
+}
+
 model Subscriber {
   id          String   @id @default(cuid())
   email       String   @unique
@@ -101,6 +116,23 @@ model Appointment {
   calendarEventId String?
   adminNotes     String   @default("")
   createdAt      DateTime @default(now())
+}
+
+// Availability windows the admin publishes for the public booker. `kind`
+// distinguishes online vs in-person; `city` is shown for in-person windows so
+// visitors know where Audarya currently is. Times are IST-naive labels.
+model Availability {
+  id        String   @id @default(cuid())
+  kind      String   @default("online") // online | offline
+  city      String   @default("")       // shown for offline windows
+  dayOfWeek Int       @default(1)         // 0=Sun … 6=Sat
+  startTime String   @default("10:00")
+  endTime   String   @default("18:00")
+  timezone  String   @default("Asia/Kolkata")
+  note      String   @default("")
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
 }
 
 model ReadingItem {

@@ -21,6 +21,11 @@ export function EasterEggs() {
       "%cYou woke up on the right side of the bed to end up here. Say hi → audarya@venturebuz.com",
       "color:#888;font-style:italic;"
     );
+    // eslint-disable-next-line no-console
+    console.log(
+      "%cPsst — the curious ones visit /the-signal.",
+      "color:#888;"
+    );
 
     const seq = [
       "ArrowUp",

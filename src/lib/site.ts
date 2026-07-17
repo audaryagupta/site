@@ -25,12 +25,13 @@ export const site = {
 // Default topics/tags used for the writings filter. These are seeds; the admin
 // can create more when publishing.
 export const defaultTopics = [
-  "Finance",
-  "Business",
+  "Finance & Economics",
+  "Business & Startups",
   "Technology",
-  "Geopolitics",
-  "History",
-  "Personal",
+  "Politics & Policy",
+  "Personal Essays",
+  "Book Reviews",
+  "Travel & Food",
 ];
 
 export type SiteConfig = typeof site;

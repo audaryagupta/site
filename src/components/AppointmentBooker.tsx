@@ -96,7 +96,7 @@ export function AppointmentBooker() {
 
       <div>
         <label className="mb-2 block text-xs uppercase tracking-widest text-muted">
-          Meeting type
+          Meeting type — online or in person
         </label>
         <div className="flex flex-wrap gap-2">
           {MODES.map((m) => {
@@ -118,6 +118,12 @@ export function AppointmentBooker() {
             );
           })}
         </div>
+        {form.mode === "physical" && (
+          <p className="mt-2 text-xs text-muted">
+            Audarya travels often — the exact city/location is confirmed with
+            you when the request is accepted.
+          </p>
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">

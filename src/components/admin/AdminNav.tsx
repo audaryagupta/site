@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
+  CalendarClock,
   CalendarDays,
   LayoutDashboard,
   LogOut,
@@ -22,6 +23,7 @@ const links = [
   { href: "/admin/subscribers", label: "Subscribers", icon: Users },
   { href: "/admin/contacts", label: "Contacts", icon: Users },
   { href: "/admin/appointments", label: "Appointments", icon: CalendarDays },
+  { href: "/admin/availability", label: "Availability", icon: CalendarClock },
   { href: "/admin/now", label: "Now page", icon: Sparkles },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

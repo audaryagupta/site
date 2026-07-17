@@ -1,11 +1,34 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { emailConfigured, sendEmail } from "@/lib/email";
+import { absoluteUrl, escapeHtml } from "@/lib/utils";
+import { site } from "@/lib/site";
 
 const schema = z.object({
   email: z.string().email(),
   firstName: z.string().trim().max(80).optional().default(""),
 });
+
+async function sendWelcome(email: string, firstName: string, unsubToken: string) {
+  if (!emailConfigured()) return;
+  const hi = firstName ? ` ${escapeHtml(firstName)}` : "";
+  try {
+    await sendEmail({
+      to: email,
+      subject: `Welcome to ${site.name}`,
+      html: `<p>Hi${hi},</p>
+        <p>Thanks for subscribing to <strong>${site.name}</strong>. Every Friday you'll get the ten stories that actually mattered in finance, business and tech — internationally and in the US — distilled into a five-minute read.</p>
+        <p>You'll also occasionally hear from me with new essays.</p>
+        <p>— Audarya</p>
+        <p style="font-size:12px;color:#888">Not for you? <a href="${absoluteUrl(
+          `/unsubscribe?token=${unsubToken}`
+        )}">Unsubscribe anytime</a>.</p>`,
+    });
+  } catch {
+    /* best-effort */
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -19,19 +42,26 @@ export async function POST(req: Request) {
 
     if (existing) {
       if (existing.status === "unsubscribed") {
-        await prisma.subscriber.update({
+        const reactivated = await prisma.subscriber.update({
           where: { email: normalized },
           data: { status: "active", firstName: firstName || existing.firstName },
         });
+        await sendWelcome(
+          normalized,
+          reactivated.firstName,
+          reactivated.unsubToken
+        );
       }
       return NextResponse.json({
         message: "You're on the list — see you Friday.",
       });
     }
 
-    await prisma.subscriber.create({
+    const created = await prisma.subscriber.create({
       data: { email: normalized, firstName },
     });
+
+    await sendWelcome(normalized, created.firstName, created.unsubToken);
 
     return NextResponse.json({
       message: "You're in. The next Friday recap is headed your way.",

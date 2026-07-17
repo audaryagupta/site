@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { guard } from "@/lib/adminApi";
-import { createCalendarEvent, googleConfigured } from "@/lib/google";
+import { createCalendarEvent, googleConfigured, isBusy } from "@/lib/google";
 import { createZoomMeeting, zoomConfigured } from "@/lib/zoom";
 import { emailConfigured, sendEmail } from "@/lib/email";
 import { escapeHtml, formatDateTime } from "@/lib/utils";
@@ -76,6 +76,15 @@ export async function PATCH(
     }
 
     if (googleConfigured()) {
+      // Respect calendar out-of-office / busy blocks unless overridden.
+      if (!body.force && (await isBusy(appt.requestedStart, appt.requestedEnd))) {
+        return NextResponse.json({
+          appointment: appt,
+          warnings: [],
+          conflict:
+            "Your Google Calendar is busy (or out-of-office) during this slot. Accept again to override.",
+        });
+      }
       const result = await createCalendarEvent({
         summary: `${appt.mode === "physical" ? "Meeting" : "Call"} with ${appt.name}`,
         description: appt.purpose,

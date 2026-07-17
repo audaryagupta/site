@@ -1,6 +1,9 @@
 import { PrismaClient } from "@prisma/client";
+import slugify from "slugify";
 
 const prisma = new PrismaClient();
+
+const toSlug = (name: string) => slugify(name, { lower: true, strict: true });
 
 const settings: Record<string, string> = {
   about_title: "About Audarya",
@@ -17,7 +20,15 @@ const settings: Record<string, string> = {
     "A running note on what I'm reading, watching and thinking about right now.",
 };
 
-const topics = ["Finance", "Business", "Technology", "Geopolitics", "Life"];
+const topics = [
+  "Finance & Economics",
+  "Business & Startups",
+  "Technology",
+  "Politics & Policy",
+  "Personal Essays",
+  "Book Reviews",
+  "Travel & Food",
+];
 
 async function main() {
   for (const [key, value] of Object.entries(settings)) {
@@ -29,7 +40,7 @@ async function main() {
   }
 
   for (const name of topics) {
-    const slug = name.toLowerCase();
+    const slug = toSlug(name);
     await prisma.tag.upsert({
       where: { slug },
       update: {},
@@ -57,7 +68,10 @@ async function main() {
         publishedAt: new Date(),
         tags: {
           connectOrCreate: [
-            { where: { slug: "life" }, create: { name: "Life", slug: "life" } },
+            {
+              where: { slug: "personal-essays" },
+              create: { name: "Personal Essays", slug: "personal-essays" },
+            },
           ],
         },
       },

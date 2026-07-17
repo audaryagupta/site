@@ -41,22 +41,23 @@ body {
   color: var(--background);
 }
 
-/* Editorial article typography */
+/* Editorial article typography — sans, generous reading measure */
 .prose-editorial {
-  font-family: var(--font-serif), Georgia, serif;
-  font-size: 1.2rem;
-  line-height: 1.75;
+  font-family: var(--font-serif), system-ui, sans-serif;
+  font-size: 1.1rem;
+  line-height: 1.72;
+  letter-spacing: -0.003em;
   color: var(--foreground);
 }
 .prose-editorial h2 {
-  font-family: var(--font-display), Georgia, serif;
+  font-family: var(--font-display), system-ui, sans-serif;
   font-size: 1.9rem;
   font-weight: 600;
   margin: 2.2rem 0 0.9rem;
   line-height: 1.2;
 }
 .prose-editorial h3 {
-  font-family: var(--font-display), Georgia, serif;
+  font-family: var(--font-display), system-ui, sans-serif;
   font-size: 1.45rem;
   font-weight: 600;
   margin: 1.8rem 0 0.7rem;

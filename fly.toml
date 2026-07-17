@@ -29,5 +29,11 @@ primary_region = "sin"  # Singapore — closest Fly region to India
   size = "shared-cpu-1x"
   memory = "512mb"
 
-# Scheduled jobs (Friday recap draft + daily digest) are driven by external
-# cron hitting the protected /api/cron/* endpoints with CRON_SECRET.
+# Scheduled jobs are driven by external cron hitting the protected
+# /api/cron/* endpoints with CRON_SECRET. Recommended schedules (UTC):
+#   Weekly recap draft — Friday 8:00 AM US Eastern:
+#     EST (Nov–Mar): "0 13 * * 5"   ·   EDT (Mar–Nov): "0 12 * * 5"
+#     (or use a scheduler that supports the America/New_York timezone directly)
+#     GET /api/cron/weekly-recap?secret=$CRON_SECRET
+#   Daily digest of pending appointments/items:
+#     GET /api/cron/daily-digest?secret=$CRON_SECRET

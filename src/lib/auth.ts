@@ -14,10 +14,10 @@ export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
-    // Only the configured admin (Audarya's GSuite account) may sign in.
+    // Any Google account may sign in (needed for public article comments).
+    // Admin-only areas are gated separately via `isAdmin` / requireAdmin().
     async signIn({ user }) {
-      if (!adminEmail) return false;
-      return (user.email || "").toLowerCase().trim() === adminEmail;
+      return Boolean((user.email || "").trim());
     },
     async jwt({ token }) {
       token.isAdmin =

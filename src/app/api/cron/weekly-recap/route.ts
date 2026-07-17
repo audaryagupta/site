@@ -33,10 +33,11 @@ async function run(req: Request) {
   }
 
   const { data } = await generateRecap();
+  // The recap is scheduled for Friday 8:00 AM US Eastern (see fly.toml / cron).
   const dateLabel = new Date().toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
-    timeZone: "Asia/Kolkata",
+    timeZone: "America/New_York",
   });
   const subject = `The Friday Recap — ${dateLabel}`;
   const previewHtml = renderRecapEmail({ subject, data, unsubUrl: "#" });

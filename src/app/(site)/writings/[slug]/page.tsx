@@ -6,6 +6,7 @@ import { ArticleBody } from "@/components/ArticleBody";
 import { ShareButtons } from "@/components/ShareButtons";
 import { ViewCounter } from "@/components/ViewCounter";
 import { ArticleCard } from "@/components/ArticleCard";
+import { Comments } from "@/components/Comments";
 import { getArticleBySlug, getRelatedArticles } from "@/lib/queries";
 import { formatDate } from "@/lib/utils";
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -113,6 +114,8 @@ export default async function ArticlePage({
             ← All writings
           </Link>
         </div>
+
+        <Comments slug={article.slug} />
       </Container>
 
       {/* Related */}

@@ -67,6 +67,24 @@ export async function createCalendarEvent(input: CalendarEventInput) {
   return { eventId: res.data.id, meetLink };
 }
 
+/**
+ * Returns true if the calendar has a busy block (including out-of-office /
+ * declined-availability events) overlapping the given window.
+ */
+export async function isBusy(start: Date, end: Date): Promise<boolean> {
+  const calendar = getCalendar();
+  const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";
+  const res = await calendar.freebusy.query({
+    requestBody: {
+      timeMin: start.toISOString(),
+      timeMax: end.toISOString(),
+      items: [{ id: calendarId }],
+    },
+  });
+  const busy = res.data.calendars?.[calendarId]?.busy || [];
+  return busy.length > 0;
+}
+
 export async function deleteCalendarEvent(eventId: string) {
   const calendar = getCalendar();
   const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";

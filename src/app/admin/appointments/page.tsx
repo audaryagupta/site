@@ -21,7 +21,8 @@ export default function AppointmentsPage() {
   const [appts, setAppts] = useState<Appt[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
-  const [note, setNote] = useState("");
+  const [cities, setCities] = useState<Record<string, string>>({});
+  const [notes, setNotes] = useState<Record<string, string>>({});
 
   async function load() {
     const res = await fetch("/api/admin/appointments");
@@ -33,17 +34,27 @@ export default function AppointmentsPage() {
     load();
   }, []);
 
-  async function act(id: string, action: "accept" | "reject") {
+  async function act(id: string, action: "accept" | "reject", force = false) {
     setBusy(id + action);
     const res = await fetch(`/api/admin/appointments/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, message: note }),
+      body: JSON.stringify({
+        action,
+        message: notes[id] || "",
+        location: cities[id] || "",
+        force,
+      }),
     });
     const data = await res.json();
-    if (data.warnings?.length) alert(data.warnings.join("\n"));
     setBusy(null);
-    setNote("");
+    if (data.conflict) {
+      if (confirm(`${data.conflict}`)) {
+        return act(id, action, true);
+      }
+      return;
+    }
+    if (data.warnings?.length) alert(data.warnings.join("\n"));
     load();
   }
 
@@ -119,6 +130,37 @@ export default function AppointmentsPage() {
                         <X size={15} /> Reject
                       </button>
                     </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 border-t border-line pt-4 sm:grid-cols-2">
+                    {a.mode === "physical" && (
+                      <label className="block">
+                        <span className="mb-1 block text-xs uppercase tracking-widest text-muted">
+                          Current city / place (in-person)
+                        </span>
+                        <input
+                          value={cities[a.id] || ""}
+                          onChange={(e) =>
+                            setCities((c) => ({ ...c, [a.id]: e.target.value }))
+                          }
+                          placeholder="e.g. Boston, MA · Delhi office"
+                          className="h-9 w-full rounded-md border border-line bg-background px-3 text-sm outline-none focus:border-foreground"
+                        />
+                      </label>
+                    )}
+                    <label className="block">
+                      <span className="mb-1 block text-xs uppercase tracking-widest text-muted">
+                        Message to requester (optional)
+                      </span>
+                      <input
+                        value={notes[a.id] || ""}
+                        onChange={(e) =>
+                          setNotes((n) => ({ ...n, [a.id]: e.target.value }))
+                        }
+                        placeholder="Added to the confirmation / decline email"
+                        className="h-9 w-full rounded-md border border-line bg-background px-3 text-sm outline-none focus:border-foreground"
+                      />
+                    </label>
                   </div>
                 </div>
               ))}

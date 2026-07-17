@@ -51,7 +51,18 @@ export function SiteFooter() {
 
       <div className="border-t border-line">
         <Container className="flex flex-col items-center justify-between gap-2 py-5 text-xs text-muted sm:flex-row">
-          <p>© {new Date().getFullYear()} byAudarya. All rights reserved.</p>
+          <p>
+            © {new Date().getFullYear()} byAudarya. All rights reserved.
+            {/* hidden easter-egg entry point */}
+            <Link
+              href="/the-signal"
+              aria-hidden="true"
+              tabIndex={-1}
+              className="ml-1 opacity-0 transition-opacity hover:opacity-40"
+            >
+              ✦
+            </Link>
+          </p>
           <div className="flex items-center gap-4">
             <Link href="/privacy" className="hover:text-foreground">
               Privacy

@@ -76,6 +76,13 @@ export async function getSentNewsletters() {
   });
 }
 
+export async function getPublicAvailability() {
+  return prisma.availability.findMany({
+    where: { active: true },
+    orderBy: [{ kind: "asc" }, { dayOfWeek: "asc" }, { startTime: "asc" }],
+  });
+}
+
 export async function getSetting(key: string, fallback = "") {
   const row = await prisma.setting.findUnique({ where: { key } });
   return row?.value ?? fallback;
