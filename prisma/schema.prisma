@@ -183,6 +183,26 @@ model Quote {
   createdAt DateTime @default(now())
 }
 
+// Dashboard access. The owner (ADMIN_EMAIL) is always allowed; additional
+// members (e.g. secretaries) are invited by email and can be revoked.
+model TeamMember {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String   @default("")
+  role      String   @default("member") // owner | member
+  status    String   @default("active") // active | revoked
+  invitedBy String   @default("")
+  createdAt DateTime @default(now())
+}
+
+// Addresses blocked from all mailings; they also can't rejoin the list.
+model EmailBlacklist {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  reason    String   @default("")
+  createdAt DateTime @default(now())
+}
+
 // System log of major actions (article published, contact added, appointment
 // accepted, newsletter sent…). Not UI clicks. Exported monthly to Google Drive.
 model ActivityLog {

@@ -31,6 +31,17 @@ export async function PUT(req: Request) {
     }
   }
 
+  if ("emails_paused" in (body.settings || {})) {
+    const prev = await prisma.setting.findUnique({
+      where: { key: "emails_paused" },
+    });
+    const was = prev?.value === "true";
+    const now = body.settings.emails_paused === "true";
+    if (was !== now) {
+      await logActivity(now ? "emails.paused" : "emails.resumed");
+    }
+  }
+
   for (const [key, value] of entries) {
     await prisma.setting.upsert({
       where: { key },

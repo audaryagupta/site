@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { emailConfigured, sendEmail } from "@/lib/email";
 import { absoluteUrl, escapeHtml } from "@/lib/utils";
 import { site } from "@/lib/site";
+import { isBlacklisted } from "@/lib/mailPolicy";
 
 const schema = z.object({
   email: z.string().email(),
@@ -35,6 +36,13 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { email, firstName } = schema.parse(body);
     const normalized = email.toLowerCase().trim();
+
+    // Blacklisted addresses can't (re)join the list.
+    if (await isBlacklisted(normalized)) {
+      return NextResponse.json({
+        message: "You're on the list — talk soon.",
+      });
+    }
 
     const existing = await prisma.subscriber.findUnique({
       where: { email: normalized },

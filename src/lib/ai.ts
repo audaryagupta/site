@@ -152,11 +152,13 @@ export async function generateRecap(): Promise<{
 
   const system = `You are the editor of "The Weekly Recap", a weekly newsletter by Audarya Gupta covering the most important news in business, finance and technology — both international and United States. You write with insight, concision and a warm personal voice.`;
 
+  const sourceGuidance = `Prefer highly reputable, widely-accessible sources (e.g. Reuters, AP, BBC, Financial Times, The Economist, Bloomberg, The Wall Street Journal, MIT Technology Review, official company/government press releases). Avoid low-quality, paywalled-only or sensational outlets. Every story MUST carry a real, direct link to the original source article so readers can click straight through.`;
+
   const groundingBlock = grounded
-    ? `Here are candidate headlines from this week (JSON). Select and rank the 10 most important, mixing international and US stories across business, finance and tech. Use ONLY urls, sources and image links from this list. Do not invent URLs.\n\n${JSON.stringify(
+    ? `Here are candidate headlines from this week (JSON). Select and rank the 10 most important, mixing international and US stories across business, finance and tech. ${sourceGuidance} Use ONLY urls, sources and image links from this list. Do not invent URLs.\n\n${JSON.stringify(
         news.slice(0, 60)
       )}`
-    : `No live headline feed is available. Use your knowledge to compile the 10 most likely-important themes in global and US business, finance and tech for the week of ${weekOf}. Leave "url" and "imageUrl" empty strings if you cannot be certain of a real link. Never fabricate specific URLs.`;
+    : `No live headline feed is available. Use your knowledge to compile the 10 most likely-important themes in global and US business, finance and tech for the week of ${weekOf}. ${sourceGuidance} Leave "url" and "imageUrl" empty strings if you cannot be certain of a real link. Never fabricate specific URLs.`;
 
   const user = `${groundingBlock}
 

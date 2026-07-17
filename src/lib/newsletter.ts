@@ -17,10 +17,21 @@ export interface RecapStory {
   imageUrl?: string;
 }
 
+export interface FeaturedItem {
+  title: string;
+  blurb?: string;
+  url?: string;
+  imageUrl?: string;
+}
+
 export interface RecapData {
   intro: string;
   signoff?: string;
   stories: RecapStory[];
+  // Audarya's own writing to spotlight this week.
+  featured?: FeaturedItem[];
+  // A free-form personal message shown near the top of the email.
+  note?: string;
 }
 
 const BG = "#faf8f3";
@@ -74,15 +85,63 @@ ${url ? `<a href="${url}" style="font-family:Arial,sans-serif;font-size:13px;col
     })
     .join("\n");
 
+  const note = (data.note || "").trim()
+    ? `<tr><td style="padding:0 32px 20px;">
+<div style="background:${BG};border:1px solid ${LINE};border-radius:6px;padding:16px 18px;">
+<p style="margin:0;font-size:15px;line-height:1.65;color:${INK};white-space:pre-wrap;">${escapeHtml(
+        data.note!.trim()
+      )}</p>
+</div></td></tr>`
+    : "";
+
+  const featured =
+    data.featured && data.featured.length
+      ? `<tr><td style="padding:8px 32px 4px;">
+<p style="margin:0 0 12px;font-family:Arial,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${MUTED};">From ${escapeHtml(
+          site.name
+        )}</p>
+${data.featured
+  .map((f) => {
+    const url = safeUrl(f.url);
+    const imageUrl = safeUrl(f.imageUrl);
+    const img = imageUrl
+      ? `<a href="${url || "#"}"><img src="${imageUrl}" width="536" alt="" style="width:100%;border-radius:4px;border:1px solid ${LINE};margin-bottom:10px;"/></a>`
+      : "";
+    return `<div style="margin-bottom:18px;">
+${img}
+<a href="${url || "#"}" style="color:${INK};text-decoration:none;"><h2 style="margin:0 0 6px;font-size:19px;line-height:1.3;">${escapeHtml(
+      f.title
+    )}</h2></a>
+${
+  f.blurb
+    ? `<p style="margin:0 0 6px;font-size:15px;line-height:1.6;color:${INK};">${escapeHtml(
+        f.blurb
+      )}</p>`
+    : ""
+}
+${
+  url
+    ? `<a href="${url}" style="font-family:Arial,sans-serif;font-size:13px;color:${INK};">Read the piece →</a>`
+    : ""
+}
+</div>`;
+  })
+  .join("\n")}
+</td></tr>
+<tr><td style="padding:0 32px 8px;"><hr style="border:0;border-top:1px solid ${LINE};"/></td></tr>`
+      : "";
+
   const inner = `
 <tr><td style="padding:32px 32px 8px;">
 <p style="margin:0;font-family:Arial,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${MUTED};">The Weekly Recap</p>
 <h1 style="margin:8px 0 0;font-size:30px;line-height:1.15;">${escapeHtml(subject)}</h1>
 </td></tr>
-<tr><td style="padding:16px 32px 24px;">
+<tr><td style="padding:16px 32px 20px;">
 <p style="margin:0 0 12px;font-size:16px;line-height:1.6;">${greeting}</p>
 <p style="margin:0;font-size:16px;line-height:1.6;color:${INK};">${escapeHtml(data.intro)}</p>
 </td></tr>
+${note}
+${featured}
 <tr><td style="padding:0 32px 8px;"><hr style="border:0;border-top:1px solid ${LINE};"/></td></tr>
 ${stories}
 ${

@@ -4,6 +4,7 @@ import { guard } from "@/lib/adminApi";
 import { emailConfigured, sendBulk } from "@/lib/email";
 import { renderGenericEmail } from "@/lib/newsletter";
 import { absoluteUrl, escapeHtml } from "@/lib/utils";
+import { emailsPaused, filterBlacklisted } from "@/lib/mailPolicy";
 
 // Opt-in new-article notification. Only fires when the admin explicitly hits
 // this endpoint from the dashboard — otherwise the article simply appears on
@@ -19,6 +20,13 @@ export async function POST(
     return NextResponse.json(
       { error: "SMTP (Google Workspace) email is not configured yet." },
       { status: 400 }
+    );
+  }
+
+  if (await emailsPaused()) {
+    return NextResponse.json(
+      { error: "Emails are paused. Resume sending in Settings first." },
+      { status: 409 }
     );
   }
 
@@ -56,11 +64,13 @@ export async function POST(
   const subs = await prisma.subscriber.findMany({
     where: { status: "active" },
   });
-  const recipients = subs.map((s) => ({
-    email: s.email,
-    firstName: s.firstName,
-    token: s.unsubToken,
-  }));
+  const recipients = await filterBlacklisted(
+    subs.map((s) => ({
+      email: s.email,
+      firstName: s.firstName,
+      token: s.unsubToken,
+    }))
+  );
 
   const { sent, errors } = await sendBulk(recipients, (r) => {
     const token = (r as { token?: string }).token || "";

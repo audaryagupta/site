@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Loader2, Send, TestTube2 } from "lucide-react";
+import { CheckCircle2, Loader2, Plus, Send, TestTube2, Trash2 } from "lucide-react";
 import { Editor } from "./Editor";
 import { cx } from "@/lib/utils";
+
+const SITE = process.env.NEXT_PUBLIC_SITE_URL || "";
 
 interface Story {
   rank: number;
@@ -16,10 +18,26 @@ interface Story {
   url?: string;
   imageUrl?: string;
 }
+interface Featured {
+  title: string;
+  blurb?: string;
+  url?: string;
+  imageUrl?: string;
+}
 interface RecapData {
   intro: string;
   signoff?: string;
   stories: Story[];
+  featured?: Featured[];
+  note?: string;
+}
+interface PublishedArticle {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  coverImage?: string | null;
+  status: string;
 }
 
 export interface NLData {
@@ -52,6 +70,38 @@ export function NewsletterEditor({ initial }: { initial: NLData }) {
       idx === i ? { ...s, ...patch } : s
     );
     setRecap({ ...recap, stories });
+  }
+
+  const [articles, setArticles] = useState<PublishedArticle[]>([]);
+  useEffect(() => {
+    if (nl.type !== "recap") return;
+    fetch("/api/admin/articles")
+      .then((r) => r.json())
+      .then((d) =>
+        setArticles(
+          (d.articles || []).filter(
+            (a: PublishedArticle) => a.status === "published"
+          )
+        )
+      )
+      .catch(() => {});
+  }, [nl.type]);
+
+  function setFeatured(next: Featured[]) {
+    if (!recap) return;
+    setRecap({ ...recap, featured: next });
+  }
+  function addFeaturedFromArticle(id: string) {
+    if (!recap || !id) return;
+    const a = articles.find((x) => x.id === id);
+    if (!a) return;
+    const item: Featured = {
+      title: a.title,
+      blurb: a.excerpt,
+      url: SITE ? `${SITE}/writings/${a.slug}` : `/writings/${a.slug}`,
+      imageUrl: a.coverImage || "",
+    };
+    setFeatured([...(recap.featured || []), item]);
   }
 
   const previewDoc = useMemo(() => nl.contentHtml, [nl.contentHtml]);
@@ -243,6 +293,126 @@ export function NewsletterEditor({ initial }: { initial: NLData }) {
                   value={recap.intro}
                   onChange={(e) => setRecap({ ...recap, intro: e.target.value })}
                 />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs uppercase tracking-widest text-muted">
+                  Personal message (optional)
+                </label>
+                <textarea
+                  className={cx(input, "min-h-20")}
+                  value={recap.note || ""}
+                  onChange={(e) => setRecap({ ...recap, note: e.target.value })}
+                  placeholder="A note to readers this week — shown in a highlighted box near the top."
+                />
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs uppercase tracking-widest text-muted">
+                    Your featured writing
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <select
+                      className={cx(input, "max-w-56 py-1.5 text-xs")}
+                      value=""
+                      onChange={(e) => {
+                        addFeaturedFromArticle(e.target.value);
+                        e.target.value = "";
+                      }}
+                    >
+                      <option value="">＋ Add from your writings…</option>
+                      {articles.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.title}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFeatured([
+                          ...(recap.featured || []),
+                          { title: "", blurb: "", url: "", imageUrl: "" },
+                        ])
+                      }
+                      className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1.5 text-xs hover:bg-subtle"
+                    >
+                      <Plus size={13} /> Blank
+                    </button>
+                  </div>
+                </div>
+                {(recap.featured || []).map((f, i) => (
+                  <div
+                    key={i}
+                    className="rounded-lg border border-line bg-card p-3"
+                  >
+                    <div className="mb-2 flex items-center gap-2">
+                      <input
+                        className={input}
+                        value={f.title}
+                        onChange={(e) =>
+                          setFeatured(
+                            (recap.featured || []).map((x, idx) =>
+                              idx === i ? { ...x, title: e.target.value } : x
+                            )
+                          )
+                        }
+                        placeholder="Title"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFeatured(
+                            (recap.featured || []).filter((_, idx) => idx !== i)
+                          )
+                        }
+                        className="rounded-md border border-line p-2 text-muted hover:bg-subtle"
+                        aria-label="Remove"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                    <textarea
+                      className={cx(input, "mb-2 min-h-14")}
+                      value={f.blurb || ""}
+                      onChange={(e) =>
+                        setFeatured(
+                          (recap.featured || []).map((x, idx) =>
+                            idx === i ? { ...x, blurb: e.target.value } : x
+                          )
+                        )
+                      }
+                      placeholder="Short blurb"
+                    />
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <input
+                        className={input}
+                        value={f.url || ""}
+                        onChange={(e) =>
+                          setFeatured(
+                            (recap.featured || []).map((x, idx) =>
+                              idx === i ? { ...x, url: e.target.value } : x
+                            )
+                          )
+                        }
+                        placeholder="Link URL"
+                      />
+                      <input
+                        className={input}
+                        value={f.imageUrl || ""}
+                        onChange={(e) =>
+                          setFeatured(
+                            (recap.featured || []).map((x, idx) =>
+                              idx === i ? { ...x, imageUrl: e.target.value } : x
+                            )
+                          )
+                        }
+                        placeholder="Image URL (optional)"
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <div className="space-y-3">

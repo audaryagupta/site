@@ -9,7 +9,7 @@ const schema = z.object({
   name: z.string().trim().min(1).max(120),
   email: z.string().email(),
   phone: z.string().trim().max(40).optional().default(""),
-  purpose: z.string().trim().max(2000).optional().default(""),
+  purpose: z.string().trim().min(1).max(2000),
   mode: z.enum(["meet", "zoom", "physical"]).default("meet"),
   date: z.string().min(1),
   time: z.string().min(1),

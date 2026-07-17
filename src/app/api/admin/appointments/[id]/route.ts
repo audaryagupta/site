@@ -20,12 +20,99 @@ export async function PATCH(
   if (g) return g;
 
   const body = await req.json();
-  const action = body.action as "accept" | "reject" | "notes" | "cancel";
+  const action = body.action as
+    | "accept"
+    | "reject"
+    | "notes"
+    | "cancel"
+    | "edit";
 
   const appt = await prisma.appointment.findUnique({
     where: { id: params.id },
   });
   if (!appt) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (action === "edit") {
+    const data: {
+      name?: string;
+      email?: string;
+      phone?: string;
+      purpose?: string;
+      mode?: string;
+      location?: string | null;
+      requestedStart?: Date;
+      requestedEnd?: Date;
+    } = {};
+    if (typeof body.name === "string") data.name = body.name;
+    if (typeof body.email === "string") data.email = body.email;
+    if (typeof body.phone === "string") data.phone = body.phone;
+    if (typeof body.purpose === "string") data.purpose = body.purpose;
+    if (typeof body.mode === "string") data.mode = body.mode;
+    if (typeof body.location === "string") data.location = body.location;
+    if (body.requestedStart) {
+      const d = new Date(body.requestedStart);
+      if (!isNaN(d.getTime())) data.requestedStart = d;
+    }
+    if (body.requestedEnd) {
+      const d = new Date(body.requestedEnd);
+      if (!isNaN(d.getTime())) data.requestedEnd = d;
+    }
+
+    const updated = await prisma.appointment.update({
+      where: { id: params.id },
+      data,
+    });
+
+    // If it was already accepted, keep the calendar event in sync and let the
+    // guest know the details changed.
+    if (updated.status === "accepted") {
+      if (appt.calendarEventId && (await googleConfigured())) {
+        try {
+          await deleteCalendarEvent(appt.calendarEventId);
+        } catch {
+          /* event may already be gone */
+        }
+        try {
+          const result = await createCalendarEvent({
+            summary: `${updated.mode === "physical" ? "Meeting" : "Call"} with ${updated.name}`,
+            description: updated.purpose,
+            start: updated.requestedStart,
+            end: updated.requestedEnd,
+            attendees: [updated.email],
+            location: updated.location || undefined,
+            createMeet: updated.mode === "meet",
+          });
+          await prisma.appointment.update({
+            where: { id: params.id },
+            data: {
+              calendarEventId: result.eventId || null,
+              meetingLink:
+                updated.mode === "meet" ? result.meetLink : updated.meetingLink,
+            },
+          });
+        } catch {
+          /* ignore calendar errors */
+        }
+      }
+      if (emailConfigured()) {
+        try {
+          await sendEmail({
+            to: updated.email,
+            subject: "Your appointment details have been updated",
+            html: `<p>Hi ${escapeHtml(updated.name)},</p><p>Your appointment has been updated to <strong>${formatDateTime(updated.requestedStart)} IST</strong>.</p><p>— Audarya</p>`,
+          });
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+
+    await logActivity(
+      "appointment.edited",
+      `${updated.name} — ${formatDateTime(updated.requestedStart)} IST`
+    );
+    return NextResponse.json({ appointment: updated });
+  }
 
   if (action === "notes") {
     const updated = await prisma.appointment.update({

@@ -85,6 +85,7 @@ export default function LogsPage() {
               <th className="px-4 py-3">When (IST)</th>
               <th className="px-4 py-3">Action</th>
               <th className="px-4 py-3">Detail</th>
+              <th className="px-4 py-3">By</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -95,11 +96,14 @@ export default function LogsPage() {
                 </td>
                 <td className="px-4 py-3 font-mono text-xs">{l.action}</td>
                 <td className="px-4 py-3 text-muted">{l.detail || "—"}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-muted">
+                  {l.actor || "system"}
+                </td>
               </tr>
             ))}
             {logs.length === 0 && (
               <tr>
-                <td colSpan={3} className="px-4 py-6 text-center text-muted">
+                <td colSpan={4} className="px-4 py-6 text-center text-muted">
                   No activity logged yet.
                 </td>
               </tr>

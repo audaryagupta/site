@@ -534,6 +534,7 @@ export function AppointmentBooker({
           <textarea
             className="min-h-24 w-full rounded-md border border-line bg-background p-3 text-sm outline-none focus:border-foreground"
             placeholder="What would you like to talk about?"
+            required
             value={form.purpose}
             onChange={(e) => update("purpose", e.target.value)}
           />

@@ -19,12 +19,21 @@ import {
   ScrollText,
   Settings,
   Sparkles,
+  UserCog,
   Users,
 } from "lucide-react";
 import { cx } from "@/lib/utils";
 import { LogoMark } from "@/components/Logo";
 
-const links = [
+interface NavLink {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  exact?: boolean;
+  ownerOnly?: boolean;
+}
+
+const links: NavLink[] = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/admin/writings", label: "Writings", icon: PenLine },
   { href: "/admin/newsletters", label: "Newsletters", icon: Mail },
@@ -39,12 +48,20 @@ const links = [
   { href: "/admin/games", label: "Games", icon: Gamepad2 },
   { href: "/admin/logs", label: "Activity log", icon: ScrollText },
   { href: "/admin/now", label: "Now page", icon: Sparkles },
-  { href: "/admin/launch", label: "Launch", icon: Rocket },
+  { href: "/admin/access", label: "Access", icon: UserCog, ownerOnly: true },
+  { href: "/admin/launch", label: "Launch", icon: Rocket, ownerOnly: true },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
-export function AdminNav({ email }: { email?: string | null }) {
+export function AdminNav({
+  email,
+  role,
+}: {
+  email?: string | null;
+  role?: string;
+}) {
   const pathname = usePathname();
+  const visible = links.filter((l) => !l.ownerOnly || role === "owner");
   return (
     <aside className="flex w-60 flex-none flex-col border-r border-line bg-subtle/40 p-4">
       <Link href="/admin" className="mb-8 mt-2 flex items-center gap-1.5 px-2">
@@ -54,7 +71,7 @@ export function AdminNav({ email }: { email?: string | null }) {
         </span>
       </Link>
       <nav className="flex-1 space-y-1">
-        {links.map((l) => {
+        {visible.map((l) => {
           const active = l.exact
             ? pathname === l.href
             : pathname.startsWith(l.href);

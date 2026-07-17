@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Send, Trash2, X } from "lucide-react";
+import { Check, Pencil, Send, Trash2, X } from "lucide-react";
 
 interface Appt {
   id: string;
@@ -41,6 +41,20 @@ export default function AppointmentsPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [cities, setCities] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
+
+  // Inline editing
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    purpose: "",
+    mode: "meet",
+    location: "",
+    date: "",
+    time: "",
+    duration: 30,
+  });
 
   // Invite form
   const [showInvite, setShowInvite] = useState(false);
@@ -98,6 +112,68 @@ export default function AppointmentsPage() {
       return;
     }
     if (data.warnings?.length) alert(data.warnings.join("\n"));
+    load();
+  }
+
+  function istParts(iso: string) {
+    const d = new Date(iso);
+    const date = d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+    const time = d.toLocaleTimeString("en-GB", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    return { date, time };
+  }
+
+  function startEdit(a: Appt) {
+    const { date, time } = istParts(a.requestedStart);
+    const duration = Math.round(
+      (new Date(a.requestedEnd).getTime() -
+        new Date(a.requestedStart).getTime()) /
+        60000
+    );
+    setEditForm({
+      name: a.name,
+      email: a.email,
+      phone: a.phone || "",
+      purpose: a.purpose || "",
+      mode: a.mode,
+      location: a.location || "",
+      date,
+      time,
+      duration: duration || 30,
+    });
+    setEditing(a.id);
+  }
+
+  async function saveEdit(id: string) {
+    setBusy(id + "edit");
+    const start = new Date(`${editForm.date}T${editForm.time}:00+05:30`);
+    const end = new Date(start.getTime() + Number(editForm.duration) * 60000);
+    const res = await fetch(`/api/admin/appointments/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "edit",
+        name: editForm.name,
+        email: editForm.email,
+        phone: editForm.phone,
+        purpose: editForm.purpose,
+        mode: editForm.mode,
+        location: editForm.location,
+        requestedStart: start.toISOString(),
+        requestedEnd: end.toISOString(),
+      }),
+    });
+    setBusy(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || "Could not save changes.");
+      return;
+    }
+    setEditing(null);
     load();
   }
 
@@ -159,6 +235,102 @@ export default function AppointmentsPage() {
 
   const input =
     "h-9 w-full rounded-md border border-line bg-background px-3 text-sm outline-none focus:border-foreground";
+
+  function renderEditForm(id: string) {
+    return (
+      <div className="mt-4 grid gap-3 border-t border-line pt-4 sm:grid-cols-2">
+        <input
+          className={input}
+          placeholder="Name"
+          value={editForm.name}
+          onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+        />
+        <input
+          className={input}
+          type="email"
+          placeholder="Email"
+          value={editForm.email}
+          onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+        />
+        <input
+          className={input}
+          placeholder="Phone"
+          value={editForm.phone}
+          onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+        />
+        <select
+          className={input}
+          value={editForm.mode}
+          onChange={(e) => setEditForm({ ...editForm, mode: e.target.value })}
+        >
+          <option value="meet">Google Meet</option>
+          <option value="zoom">Zoom</option>
+          <option value="physical">In person</option>
+        </select>
+        <input
+          className={input}
+          type="date"
+          value={editForm.date}
+          onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+        />
+        <input
+          className={input}
+          type="time"
+          value={editForm.time}
+          onChange={(e) => setEditForm({ ...editForm, time: e.target.value })}
+        />
+        <select
+          className={input}
+          value={editForm.duration}
+          onChange={(e) =>
+            setEditForm({ ...editForm, duration: Number(e.target.value) })
+          }
+        >
+          {[15, 30, 60, 90].map((d) => (
+            <option key={d} value={d}>
+              {d} minutes
+            </option>
+          ))}
+        </select>
+        {editForm.mode === "physical" && (
+          <input
+            className={input}
+            placeholder="Location / full address"
+            value={editForm.location}
+            onChange={(e) =>
+              setEditForm({ ...editForm, location: e.target.value })
+            }
+          />
+        )}
+        <textarea
+          className="min-h-16 w-full rounded-md border border-line bg-background p-3 text-sm outline-none focus:border-foreground sm:col-span-2"
+          placeholder="Purpose / agenda"
+          value={editForm.purpose}
+          onChange={(e) =>
+            setEditForm({ ...editForm, purpose: e.target.value })
+          }
+        />
+        <div className="flex items-center gap-2 sm:col-span-2">
+          <button
+            onClick={() => saveEdit(id)}
+            disabled={busy === id + "edit"}
+            className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
+          >
+            {busy === id + "edit" ? "Saving…" : "Save changes"}
+          </button>
+          <button
+            onClick={() => setEditing(null)}
+            className="rounded-md border border-line px-4 py-2 text-sm hover:bg-subtle"
+          >
+            Cancel
+          </button>
+          <span className="text-xs text-muted">
+            If accepted, the calendar event & guest email update automatically.
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -395,8 +567,19 @@ export default function AppointmentsPage() {
                       >
                         <X size={15} /> Reject
                       </button>
+                      <button
+                        onClick={() =>
+                          editing === a.id ? setEditing(null) : startEdit(a)
+                        }
+                        disabled={!!busy}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-2 text-sm hover:bg-subtle disabled:opacity-50"
+                      >
+                        <Pencil size={15} /> Edit
+                      </button>
                     </div>
                   </div>
+
+                  {editing === a.id && renderEditForm(a.id)}
 
                   <div className="mt-4 grid gap-3 border-t border-line pt-4 sm:grid-cols-2">
                     {a.mode === "physical" && (
@@ -442,38 +625,56 @@ export default function AppointmentsPage() {
                 {accepted.map((a) => (
                   <div
                     key={a.id}
-                    className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-line bg-card p-4"
+                    className="rounded-lg border border-line bg-card p-4"
                   >
-                    <div className="text-sm">
-                      <p className="font-medium">
-                        {a.name}{" "}
-                        <span className="ml-1 rounded-full bg-subtle px-2 py-0.5 text-xs uppercase tracking-wide text-muted">
-                          {a.mode}
-                        </span>
-                      </p>
-                      <p className="mt-1 text-muted">{fmt(a.requestedStart)}</p>
-                      {a.location && (
-                        <p className="mt-0.5 text-muted">📍 {a.location}</p>
-                      )}
-                      {a.meetingLink && (
-                        <a
-                          href={a.meetingLink}
-                          className="mt-0.5 block truncate text-foreground hover:underline"
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div className="text-sm">
+                        <p className="font-medium">
+                          {a.name}{" "}
+                          <span className="ml-1 rounded-full bg-subtle px-2 py-0.5 text-xs uppercase tracking-wide text-muted">
+                            {a.mode}
+                          </span>
+                        </p>
+                        <p className="mt-1 text-muted">{fmt(a.requestedStart)}</p>
+                        {a.location && (
+                          <p className="mt-0.5 text-muted">📍 {a.location}</p>
+                        )}
+                        {a.meetingLink && (
+                          <a
+                            href={a.meetingLink}
+                            className="mt-0.5 block truncate text-foreground hover:underline"
+                          >
+                            {a.meetingLink}
+                          </a>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() =>
+                            editing === a.id ? setEditing(null) : startEdit(a)
+                          }
+                          disabled={!!busy}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-2 text-sm hover:bg-subtle disabled:opacity-50"
                         >
-                          {a.meetingLink}
-                        </a>
-                      )}
+                          <Pencil size={15} /> Edit
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (
+                              confirm(
+                                "Cancel this appointment and notify the guest?"
+                              )
+                            )
+                              act(a.id, "cancel");
+                          }}
+                          disabled={!!busy}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-2 text-sm hover:bg-subtle disabled:opacity-50"
+                        >
+                          <Trash2 size={15} /> Cancel
+                        </button>
+                      </div>
                     </div>
-                    <button
-                      onClick={() => {
-                        if (confirm("Cancel this appointment and notify the guest?"))
-                          act(a.id, "cancel");
-                      }}
-                      disabled={!!busy}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-2 text-sm hover:bg-subtle disabled:opacity-50"
-                    >
-                      <Trash2 size={15} /> Cancel
-                    </button>
+                    {editing === a.id && renderEditForm(a.id)}
                   </div>
                 ))}
               </div>

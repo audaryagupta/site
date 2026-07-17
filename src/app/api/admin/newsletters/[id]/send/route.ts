@@ -9,6 +9,7 @@ import {
 } from "@/lib/newsletter";
 import { absoluteUrl } from "@/lib/utils";
 import { logActivity } from "@/lib/activity";
+import { emailsPaused, filterBlacklisted } from "@/lib/mailPolicy";
 
 export async function POST(
   req: Request,
@@ -26,6 +27,14 @@ export async function POST(
 
   const body = await req.json().catch(() => ({}));
   const testMode = Boolean(body.test);
+
+  // A test send to the admin is always allowed; real sends respect the pause.
+  if (!testMode && (await emailsPaused())) {
+    return NextResponse.json(
+      { error: "Emails are paused. Resume sending in Settings first." },
+      { status: 409 }
+    );
+  }
 
   const nl = await prisma.newsletter.findUnique({ where: { id: params.id } });
   if (!nl) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -103,6 +112,9 @@ export async function POST(
       token: s.unsubToken,
     }));
   }
+
+  // Never mail blacklisted addresses.
+  recipients = await filterBlacklisted(recipients);
 
   const { sent, errors } = await sendBulk(recipients, (r) => {
     const token = (r as { token?: string }).token || "";
