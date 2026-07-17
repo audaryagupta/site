@@ -9,6 +9,9 @@ const adminEmail = (process.env.ADMIN_EMAIL || "").toLowerCase().trim();
 const studioHost = (process.env.NEXT_PUBLIC_STUDIO_HOST || "")
   .toLowerCase()
   .trim();
+const primaryHost = (process.env.NEXT_PUBLIC_PRIMARY_HOST || "")
+  .toLowerCase()
+  .trim();
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -18,9 +21,17 @@ export async function middleware(req: NextRequest) {
   // NextAuth routes always pass through.
   if (pathname.startsWith("/api/auth")) return NextResponse.next();
 
-  // Keep the console off the public host when a studio subdomain is configured.
+  const apexHost = primaryHost.startsWith("www.")
+    ? primaryHost.slice(4)
+    : `www.${primaryHost}`;
+  const onPublicCustomHost =
+    Boolean(primaryHost) && (host === primaryHost || host === apexHost);
+
+  // Keep the console off the public custom domain. Leave the *.fly.dev preview
+  // admin available until DNS is fully cut over.
   if (
     studioHost &&
+    onPublicCustomHost &&
     !onStudio &&
     (pathname.startsWith("/admin") || pathname.startsWith("/api/admin"))
   ) {
