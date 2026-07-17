@@ -525,12 +525,21 @@ export function AppointmentBooker({
               onChange={(e) => update("email", e.target.value)}
             />
           </div>
-          <input
-            className={input}
-            placeholder="Phone (optional)"
-            value={form.phone}
-            onChange={(e) => update("phone", e.target.value)}
-          />
+          <div>
+            <input
+              className={input}
+              type="tel"
+              placeholder="Phone with country code (e.g. +91 98765 43210)"
+              required
+              pattern="^\\+[0-9][0-9\\s().-]{7,}$"
+              value={form.phone}
+              onChange={(e) => update("phone", e.target.value)}
+            />
+            <p className="mt-1 text-xs text-muted">
+              Include the country code so confirmations and changes can reach
+              the right number.
+            </p>
+          </div>
           <textarea
             className="min-h-24 w-full rounded-md border border-line bg-background p-3 text-sm outline-none focus:border-foreground"
             placeholder="What would you like to talk about?"
@@ -555,7 +564,9 @@ export function AppointmentBooker({
             </button>
             <button
               type="submit"
-              disabled={status === "loading" || !captcha.token}
+              disabled={
+                status === "loading" || !captcha.token || !captcha.answer
+              }
               className="inline-flex h-11 items-center gap-2 rounded-md bg-foreground px-6 text-sm font-medium text-background transition hover:opacity-90 disabled:opacity-40"
             >
               <CalendarCheck size={16} />

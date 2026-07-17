@@ -95,8 +95,8 @@ export default async function ContactPage() {
             </h2>
             <p className="mt-2 font-serif text-muted">
               Request a Google Meet, Zoom, or in-person meeting. Name, email,
-              purpose, date and time are required so calendar invitations and
-              updates reach the right person.
+              phone with country code, purpose, date, time and CAPTCHA are
+              required so invitations and updates reach the right person.
             </p>
 
             {availability.length > 0 && (

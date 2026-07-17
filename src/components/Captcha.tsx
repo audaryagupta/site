@@ -63,7 +63,7 @@ export function Captcha({
         sitekey: SITE_KEY!,
         callback: (t: string) => {
           setToken(t);
-          onChange({ token: t, answer: "" });
+          onChange({ token: t, answer: "turnstile" });
         },
         "expired-callback": () => {
           setToken("");

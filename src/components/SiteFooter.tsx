@@ -63,7 +63,10 @@ export function SiteFooter() {
           </p>
           <div className="flex items-center gap-4">
             <Link href="/privacy" className="hover:text-foreground">
-              Privacy
+              Privacy Policy
+            </Link>
+            <Link href="/terms" className="hover:text-foreground">
+              Terms
             </Link>
             <a
               href={`mailto:${site.email}`}

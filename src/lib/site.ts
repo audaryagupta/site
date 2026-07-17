@@ -5,7 +5,7 @@ export const site = {
   description:
     "Essays, dispatches and curiosities about the world and everything in it — the personal writings of Audarya Gupta.",
   author: "Audarya Gupta",
-  email: "audarya@venturebuz.com",
+  email: "audarya@byaudarya.com",
   nav: [
     { href: "/", label: "Home" },
     { href: "/writings", label: "My Writings" },

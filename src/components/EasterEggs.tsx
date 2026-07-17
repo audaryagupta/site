@@ -18,7 +18,7 @@ export function EasterEggs() {
     );
     // eslint-disable-next-line no-console
     console.log(
-      "%cYou woke up on the right side of the bed to end up here. Say hi → audarya@venturebuz.com",
+      "%cYou woke up on the right side of the bed to end up here. Say hi → audarya@byaudarya.com",
       "color:#888;font-style:italic;"
     );
     // eslint-disable-next-line no-console

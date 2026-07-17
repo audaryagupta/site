@@ -8,7 +8,11 @@ import { absoluteUrl, escapeHtml, formatDateTime } from "@/lib/utils";
 const schema = z.object({
   name: z.string().trim().min(1).max(120),
   email: z.string().email(),
-  phone: z.string().trim().max(40).optional().default(""),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\+[0-9][0-9\s().-]{7,}$/, "Phone number with country code required")
+    .max(40),
   purpose: z.string().trim().min(1).max(2000),
   mode: z.enum(["meet", "zoom", "physical"]).default("meet"),
   date: z.string().min(1),

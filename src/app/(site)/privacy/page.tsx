@@ -3,34 +3,48 @@ import { Container } from "@/components/Container";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Privacy",
-  description: "How byAudarya handles your data.",
+  title: "Privacy Policy",
+  description: "How byAudarya handles personal information.",
 };
 
 export default function PrivacyPage() {
   return (
     <Container className="max-w-prose py-16">
-      <h1 className="font-display text-4xl font-semibold tracking-tight">
-        Privacy
+      <p className="text-xs uppercase tracking-[0.25em] text-muted">
+        Website policy
+      </p>
+      <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight">
+        Privacy Policy
       </h1>
       <div className="prose-editorial mt-8">
         <p>
-          byAudarya collects only what you choose to share: your name and email
-          when you subscribe to the newsletter or send a message, and any
-          details you provide when booking an appointment.
+          This website collects only the information you choose to provide, such
+          as your name, email address, phone number, message, newsletter
+          subscription details, appointment request details, comments and any
+          files or content you submit through the Studio or public forms.
         </p>
         <p>
-          Your email is used solely to send you the content you signed up for.
-          Every newsletter includes a one-click unsubscribe link, and your data
-          is never sold or shared with third parties.
+          Your information is used to operate the website, respond to messages,
+          send newsletters you requested, manage subscriptions and unsubscribes,
+          schedule appointments, send calendar invitations, prevent abuse, keep
+          activity logs, and improve the site.
         </p>
         <p>
-          Appointment details are used only to schedule and confirm your
-          meeting via Google Calendar.
+          The site may use trusted third-party services such as Google, Fly.io,
+          email providers, analytics, CAPTCHA/security providers and AI/news
+          services where necessary to operate these features. Information is not
+          sold. It may be shared only where needed to run the service, comply
+          with law, protect the website, or complete a request you made.
         </p>
         <p>
-          Questions? Write to{" "}
+          Newsletter emails include an unsubscribe link. You can also ask for
+          corrections or deletion where applicable by writing to{" "}
           <a href={`mailto:${site.email}`}>{site.email}</a>.
+        </p>
+        <p>
+          No internet service is perfectly secure or permanently available. The
+          website is provided on a reasonable-efforts basis and may be changed,
+          paused or discontinued at any time.
         </p>
       </div>
     </Container>
