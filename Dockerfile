@@ -21,6 +21,7 @@ RUN npx prisma generate
 # Create an empty schema DB so pages that read Prisma can be prerendered.
 # At runtime this is replaced by the persistent volume mounted at /data.
 RUN mkdir -p /data && npx prisma db push --skip-generate
+ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN npm run build
 
 # ---- runner ----
