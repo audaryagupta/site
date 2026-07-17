@@ -22,14 +22,14 @@ export default async function HomePage() {
               The personal blog of Audarya Gupta
             </p>
             <h1 className="font-display text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl md:text-7xl">
-              Ideas on finance,
+              Ideas worth
               <br />
-              tech &amp; the world.
+              passing on.
             </h1>
             <p className="mt-6 max-w-xl font-serif text-lg text-muted">
-              Essays and dispatches on markets, technology, geopolitics and the
-              curiosities in between — written to be shared, because any idea
-              that leaves you becomes twice as useful.
+              Essays, dispatches and curiosities about the world and everything
+              in it — written to be shared, because any idea that leaves you
+              becomes twice as useful.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <Link

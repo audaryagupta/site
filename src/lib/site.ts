@@ -3,7 +3,7 @@ export const site = {
   url: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
   tagline: "The personal blog of Audarya Gupta",
   description:
-    "Ideas on finance, tech, business and the world — the personal writings of Audarya Gupta.",
+    "Essays, dispatches and curiosities about the world and everything in it — the personal writings of Audarya Gupta.",
   author: "Audarya Gupta",
   email: "audarya@venturebuz.com",
   nav: [

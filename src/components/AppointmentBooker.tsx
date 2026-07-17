@@ -39,8 +39,15 @@ function toLabel(mins: number) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-export function AppointmentBooker({ windows = [] }: { windows?: Window[] }) {
-  const [open, setOpen] = useState(false);
+export function AppointmentBooker({
+  windows = [],
+  variant = "inline",
+}: {
+  windows?: Window[];
+  variant?: "inline" | "page";
+}) {
+  const isPage = variant === "page";
+  const [open, setOpen] = useState(isPage);
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({
     name: "",
@@ -150,9 +157,13 @@ export function AppointmentBooker({ windows = [] }: { windows?: Window[] }) {
   }
 
   return (
-    <div className="rounded-xl border border-line p-5 sm:p-6">
+    <div
+      className={cx(
+        isPage ? "" : "rounded-xl border border-line p-5 sm:p-6"
+      )}
+    >
       {/* Step indicator */}
-      <ol className="mb-6 flex items-center gap-2 text-xs">
+      <ol className="mb-8 flex items-center gap-2 text-xs">
         {STEPS.map((label, i) => (
           <li key={label} className="flex items-center gap-2">
             <span
@@ -184,7 +195,7 @@ export function AppointmentBooker({ windows = [] }: { windows?: Window[] }) {
 
       {/* Step 1 — type */}
       {step === 0 && (
-        <div className="animate-fade-up space-y-4">
+        <div key="step-type" className="animate-fade-up space-y-4">
           <p className="text-sm text-muted">How would you like to meet?</p>
           <div className="grid gap-3 sm:grid-cols-3">
             {MODES.map((m) => {
@@ -228,7 +239,7 @@ export function AppointmentBooker({ windows = [] }: { windows?: Window[] }) {
 
       {/* Step 2 — time */}
       {step === 1 && (
-        <div className="animate-fade-up space-y-4">
+        <div key="step-time" className="animate-fade-up space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-2 block text-xs uppercase tracking-widest text-muted">
@@ -329,7 +340,7 @@ export function AppointmentBooker({ windows = [] }: { windows?: Window[] }) {
 
       {/* Step 3 — details */}
       {step === 2 && (
-        <form onSubmit={submit} className="animate-fade-up space-y-4">
+        <form key="step-details" onSubmit={submit} className="animate-fade-up space-y-4">
           <div className="rounded-md border border-line bg-subtle/50 px-4 py-3 text-sm">
             <span className="text-muted">Requesting:</span>{" "}
             <strong>

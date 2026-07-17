@@ -4,16 +4,14 @@ import { Container } from "./Container";
 import { SocialIcons } from "./SocialIcons";
 import { SubscribeForm } from "./SubscribeForm";
 import { EasterEggs } from "./EasterEggs";
+import { Logo } from "./Logo";
 
 export function SiteFooter() {
   return (
     <footer className="mt-24 border-t border-line bg-subtle/60">
       <Container className="grid gap-12 py-14 md:grid-cols-[1.5fr_1fr_1.5fr]">
         <div>
-          <p className="font-display text-xl">
-            <span className="italic">by</span>{" "}
-            <span className="tracking-[0.18em]">AUDARYA</span>
-          </p>
+          <Logo className="h-9" />
           <p className="mt-3 max-w-xs text-sm text-muted">{site.tagline}.</p>
           <div className="mt-5">
             <SocialIcons size={18} />

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { ArrowRight, CalendarCheck } from "lucide-react";
 import { Container } from "@/components/Container";
 import { ContactForm } from "@/components/ContactForm";
-import { AppointmentBooker } from "@/components/AppointmentBooker";
 import { SocialIcons } from "@/components/SocialIcons";
 import { getPublicAvailability } from "@/lib/queries";
 import { site } from "@/lib/site";
@@ -97,15 +98,17 @@ export default async function ContactPage() {
           )}
 
           <div className="mt-6">
-            <AppointmentBooker
-              windows={availability.map((w) => ({
-                kind: w.kind,
-                city: w.city,
-                dayOfWeek: w.dayOfWeek,
-                startTime: w.startTime,
-                endTime: w.endTime,
-              }))}
-            />
+            <Link
+              href="/appointments"
+              className="group inline-flex h-12 items-center gap-2 rounded-md bg-foreground px-6 text-sm font-medium text-background transition hover:opacity-90"
+            >
+              <CalendarCheck size={17} />
+              Make an appointment
+              <ArrowRight
+                size={16}
+                className="transition-transform group-hover:translate-x-0.5"
+              />
+            </Link>
           </div>
         </section>
       </div>
