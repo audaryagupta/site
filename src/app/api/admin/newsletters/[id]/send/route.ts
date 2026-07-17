@@ -8,6 +8,7 @@ import {
   type RecapData,
 } from "@/lib/newsletter";
 import { absoluteUrl } from "@/lib/utils";
+import { logActivity } from "@/lib/activity";
 
 export async function POST(
   req: Request,
@@ -120,6 +121,11 @@ export async function POST(
       recipientCount: sent,
     },
   });
+
+  await logActivity(
+    "newsletter.sent",
+    `“${nl.subject}” → ${sent} recipient(s)`
+  );
 
   return NextResponse.json({ ok: true, sent, failed: errors.length });
 }

@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 import { Container } from "@/components/Container";
 import { QuoteGame } from "@/components/QuoteGame";
-import { quoteRounds } from "@/lib/quotes";
+import { buildQuoteRounds } from "@/lib/queries";
 
 export const metadata: Metadata = {
   title: "Who said it?",
   robots: { index: false, follow: false },
 };
 
-export default function WhoSaidItPage() {
+export const dynamic = "force-dynamic";
+
+export default async function WhoSaidItPage() {
+  const quoteRounds = await buildQuoteRounds();
   return (
     <Container className="py-16">
       <div className="mx-auto max-w-2xl">

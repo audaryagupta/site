@@ -168,3 +168,26 @@ model Setting {
   key   String @id
   value String @default("")
 }
+
+// Quotes for the hidden "Who said it?" game. `mine` marks Audarya's own lines;
+// the rest are famous quotes. Rounds are built from these (1 of hers + 2 others).
+model Quote {
+  id        String   @id @default(cuid())
+  text      String
+  author    String   @default("")   // shown for famous quotes; blank for hers
+  mine      Boolean  @default(false)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+// System log of major actions (article published, contact added, appointment
+// accepted, newsletter sent…). Not UI clicks. Exported monthly to Google Drive.
+model ActivityLog {
+  id        String   @id @default(cuid())
+  action    String                    // e.g. "article.published"
+  detail    String   @default("")     // human-readable summary
+  actor     String   @default("")     // admin email when known
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

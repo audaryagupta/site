@@ -1,4 +1,30 @@
 import { prisma } from "./prisma";
+import { quoteRounds as staticRounds, type QuoteRound } from "./quotes";
+
+/**
+ * Builds "Who said it?" rounds from the admin-managed quote bank: each round is
+ * one of Audarya's quotes plus two famous ones (shuffled). Falls back to the
+ * built-in set when there aren't enough quotes in the database yet.
+ */
+export async function buildQuoteRounds(max = 6): Promise<QuoteRound[]> {
+  const [mine, others] = await Promise.all([
+    prisma.quote.findMany({ where: { mine: true, active: true } }),
+    prisma.quote.findMany({ where: { mine: false, active: true } }),
+  ]);
+
+  if (mine.length < 1 || others.length < 2) return staticRounds;
+
+  const shuffle = <T,>(a: T[]) => [...a].sort(() => Math.random() - 0.5);
+  const mineS = shuffle(mine);
+  const rounds: QuoteRound[] = [];
+
+  for (let i = 0; i < Math.min(max, mineS.length); i++) {
+    const two = shuffle(others).slice(0, 2);
+    const opts = shuffle([mineS[i].text, two[0].text, two[1].text]);
+    rounds.push({ options: opts, mine: opts.indexOf(mineS[i].text) });
+  }
+  return rounds.length ? rounds : staticRounds;
+}
 
 export async function getPublishedArticles(opts?: {
   topic?: string;

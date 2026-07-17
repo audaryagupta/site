@@ -22,6 +22,7 @@ export interface ArticleDraft {
   featured: boolean;
   seoTitle: string;
   seoDescription: string;
+  publishedAt?: string | null; // YYYY-MM-DD (IST) for the date input
   notifiedAt?: string | null;
 }
 
@@ -383,6 +384,19 @@ export function ArticleEditor({ initial }: { initial: ArticleDraft }) {
             onChange={(e) => set("slug", e.target.value)}
             placeholder="auto from title"
           />
+        </Field>
+
+        <Field label="Publish date">
+          <input
+            type="date"
+            className={input}
+            value={draft.publishedAt || ""}
+            onChange={(e) => set("publishedAt", e.target.value)}
+          />
+          <p className="mt-1 text-xs text-muted">
+            Back-date pieces written long ago; controls the date shown and the
+            order on the site.
+          </p>
         </Field>
 
         <label className="flex items-center gap-2 text-sm">

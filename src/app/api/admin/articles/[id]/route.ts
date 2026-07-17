@@ -3,6 +3,16 @@ import { prisma } from "@/lib/prisma";
 import { guard } from "@/lib/adminApi";
 import { makeSlug, estimateReadingMinutes, excerptFromHtml } from "@/lib/utils";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { logActivity } from "@/lib/activity";
+
+// A date-only value (YYYY-MM-DD) is anchored to noon IST so it never rolls to
+// the previous day; full timestamps are parsed as-is.
+function parsePublishDate(v: unknown): Date | null {
+  if (!v || typeof v !== "string") return null;
+  const s = /^\d{4}-\d{2}-\d{2}$/.test(v) ? `${v}T12:00:00+05:30` : v;
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
 
 export async function GET(
   _req: Request,
@@ -76,10 +86,15 @@ export async function PATCH(
     seoTitle: body.seoTitle ?? current.seoTitle,
     seoDescription: body.seoDescription ?? current.seoDescription,
     readingMinutes: estimateReadingMinutes(contentHtml),
-    publishedAt:
-      status === "published"
+    publishedAt: (() => {
+      if (body.publishedAt !== undefined) {
+        // Explicit manual date wins (used to back-date old pieces).
+        return parsePublishDate(body.publishedAt) ?? current.publishedAt;
+      }
+      return status === "published"
         ? current.publishedAt || new Date()
-        : current.publishedAt,
+        : current.publishedAt;
+    })(),
   };
 
   if (body.tags) {
@@ -100,6 +115,10 @@ export async function PATCH(
     data,
     include: { tags: true },
   });
+
+  if (status === "published" && current.status !== "published") {
+    await logActivity("article.published", `“${article.title}”`);
+  }
 
   return NextResponse.json({ article });
 }

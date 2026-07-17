@@ -47,12 +47,15 @@ export async function listCalendars(): Promise<CalendarSummary[]> {
   }));
 }
 
-// Scopes requested when the admin connects a Google Calendar. Sign-in (comments)
-// uses NextAuth separately and does NOT request these, so ordinary visitors are
-// never prompted for calendar access.
+// Scopes requested when the admin connects Google. Sign-in (comments) uses
+// NextAuth separately and does NOT request these, so ordinary visitors are
+// never prompted. Covers calendar (booking), Drive (monthly log export +
+// letterhead/certificate docs) and Docs (filling templates).
 export const CALENDAR_SCOPES = [
   "https://www.googleapis.com/auth/calendar",
   "https://www.googleapis.com/auth/calendar.events",
+  "https://www.googleapis.com/auth/drive",
+  "https://www.googleapis.com/auth/documents",
 ];
 
 /** The redirect URI Google must be configured with for the connect flow. */
@@ -253,4 +256,61 @@ export async function deleteCalendarEvent(eventId: string) {
     eventId,
     sendUpdates: "all",
   });
+}
+
+// ---- Drive / Docs ----------------------------------------------------------
+
+export async function getDrive() {
+  return google.drive({ version: "v3", auth: await getOAuthClient() });
+}
+
+export async function getDocs() {
+  return google.docs({ version: "v1", auth: await getOAuthClient() });
+}
+
+/** Find (or create) a Drive folder by name under the account root. */
+export async function ensureDriveFolder(name: string): Promise<string> {
+  const drive = await getDrive();
+  const q =
+    `mimeType='application/vnd.google-apps.folder' and trashed=false and name='${name.replace(
+      /'/g,
+      "\\'"
+    )}'`;
+  const found = await drive.files.list({ q, fields: "files(id,name)" });
+  const existing = found.data.files?.[0]?.id;
+  if (existing) return existing;
+  const created = await drive.files.create({
+    requestBody: {
+      name,
+      mimeType: "application/vnd.google-apps.folder",
+    },
+    fields: "id",
+  });
+  return created.data.id || "";
+}
+
+/** Upload (or overwrite) a text file in a Drive folder. Returns the file id. */
+export async function uploadTextFile(
+  folderId: string,
+  name: string,
+  content: string,
+  mimeType = "text/csv"
+): Promise<string> {
+  const drive = await getDrive();
+  const existing = await drive.files.list({
+    q: `name='${name.replace(/'/g, "\\'")}' and '${folderId}' in parents and trashed=false`,
+    fields: "files(id)",
+  });
+  const media = { mimeType, body: content };
+  const fileId = existing.data.files?.[0]?.id;
+  if (fileId) {
+    await drive.files.update({ fileId, media });
+    return fileId;
+  }
+  const created = await drive.files.create({
+    requestBody: { name, parents: [folderId] },
+    media,
+    fields: "id",
+  });
+  return created.data.id || "";
 }

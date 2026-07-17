@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { guard } from "@/lib/adminApi";
+import { logActivity } from "@/lib/activity";
 
 export async function GET() {
   const g = await guard();
@@ -94,6 +95,11 @@ export async function POST(req: Request) {
     }
   }
 
+  if (added)
+    await logActivity(
+      "contact.added",
+      added === 1 ? "1 contact added/updated" : `${added} contacts added/updated`
+    );
   return NextResponse.json({ ok: true, added });
 }
 

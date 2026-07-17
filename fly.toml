@@ -37,3 +37,5 @@ primary_region = "sin"  # Singapore — closest Fly region to India
 #     GET /api/cron/weekly-recap?secret=$CRON_SECRET
 #   Daily digest of pending appointments/items:
 #     GET /api/cron/daily-digest?secret=$CRON_SECRET
+#   Monthly activity-log export to Google Drive — 1st of month 00:30 IST ("0 19 1 * *" UTC):
+#     GET /api/cron/export-logs?secret=$CRON_SECRET

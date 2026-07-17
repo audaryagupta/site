@@ -10,6 +10,7 @@ import {
 import { createZoomMeeting, zoomConfigured } from "@/lib/zoom";
 import { emailConfigured, sendEmail } from "@/lib/email";
 import { absoluteUrl, escapeHtml, formatDateTime } from "@/lib/utils";
+import { logActivity } from "@/lib/activity";
 
 export async function PATCH(
   req: Request,
@@ -67,6 +68,10 @@ export async function PATCH(
       where: { id: params.id },
       data: { status: "cancelled", calendarEventId: null },
     });
+    await logActivity(
+      "appointment.cancelled",
+      `${appt.name} — ${formatDateTime(appt.requestedStart)} IST`
+    );
     if (emailConfigured()) {
       try {
         await sendEmail({
@@ -145,6 +150,11 @@ export async function PATCH(
       calendarEventId,
     },
   });
+
+  await logActivity(
+    "appointment.accepted",
+    `${appt.name} — ${formatDateTime(appt.requestedStart)} IST (${appt.mode})`
+  );
 
   if (emailConfigured()) {
     const details =
