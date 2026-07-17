@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Article {
+  id              String    @id @default(cuid())
+  slug            String    @unique
+  title           String
+  excerpt         String    @default("")
+  contentHtml     String    @default("")
+  coverImage      String?
+  coverCredit     String?
+  language        String    @default("en") // primary language of the piece
+  translationHtml String?                  // optional translation body (e.g. Hindi/English)
+  translationLang String?                  // language code of the translation
+  status          String    @default("draft") // draft | published
+  featured        Boolean   @default(false)
+  seoTitle        String?
+  seoDescription  String?
+  readingMinutes  Int       @default(1)
+  views           Int       @default(0)
+  publishedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  tags            Tag[]     @relation("ArticleTags")
+}
+
+model Tag {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  slug     String    @unique
+  articles Article[] @relation("ArticleTags")
+}
+
+model Subscriber {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  firstName   String   @default("")
+  status      String   @default("active") // active | unsubscribed
+  unsubToken  String   @unique @default(cuid())
+  source      String   @default("website")
+  createdAt   DateTime @default(now())
+}
+
+// Private, admin-uploaded contacts for birthday / promotional emails
+model Contact {
+  id        String   @id @default(cuid())
+  email     String
+  firstName String   @default("")
+  lastName  String   @default("")
+  birthday  DateTime?
+  notes     String   @default("")
+  createdAt DateTime @default(now())
+
+  @@unique([email])
+}
+
+model Newsletter {
+  id           String    @id @default(cuid())
+  type         String    @default("recap") // recap | general | promo | birthday
+  subject      String    @default("")
+  previewText  String    @default("")
+  contentHtml  String    @default("")
+  dataJson     String?   // structured payload (e.g. top 10 recap cards)
+  status       String    @default("draft") // draft | pending_approval | approved | sending | sent | failed
+  audience     String    @default("subscribers") // subscribers | contacts
+  scheduledFor DateTime?
+  sentAt       DateTime?
+  recipientCount Int     @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String   @default("")
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Appointment {
+  id             String   @id @default(cuid())
+  name           String
+  email          String
+  phone          String   @default("")
+  purpose        String   @default("")
+  mode           String   @default("meet") // meet | zoom | physical
+  requestedStart DateTime
+  requestedEnd   DateTime
+  status         String   @default("pending") // pending | accepted | rejected | cancelled
+  meetingLink    String?
+  location       String?
+  calendarEventId String?
+  adminNotes     String   @default("")
+  createdAt      DateTime @default(now())
+}
+
+model ReadingItem {
+  id        String   @id @default(cuid())
+  title     String
+  author    String   @default("")
+  link      String   @default("")
+  note      String   @default("")
+  category  String   @default("reading") // reading | watching | now
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+// Flexible key/value store for editable site content (About, Now intro, socials...)
+model Setting {
+  key   String @id
+  value String @default("")
+}

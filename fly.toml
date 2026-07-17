@@ -1,0 +1,33 @@
+# Fly.io configuration for byAudarya. Rename `app` after `fly launch`/`fly apps create`.
+app = "byaudarya"
+primary_region = "sin"  # Singapore — closest Fly region to India
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NEXT_PUBLIC_SITE_URL = "https://www.byaudarya.com"
+  NEXT_PUBLIC_SITE_NAME = "byAudarya"
+  NEXTAUTH_URL = "https://www.byaudarya.com"
+  DATABASE_URL = "file:/data/prod.db"
+  TZ = "Asia/Kolkata"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+
+# Persistent volume for the SQLite database. Create with:
+#   fly volumes create byaudarya_data --size 1 --region sin
+[[mounts]]
+  source = "byaudarya_data"
+  destination = "/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+
+# Scheduled jobs (Friday recap draft + daily digest) are driven by external
+# cron hitting the protected /api/cron/* endpoints with CRON_SECRET.

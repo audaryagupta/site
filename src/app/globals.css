@@ -1,0 +1,136 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #faf8f3;
+  --foreground: #171614;
+  --muted: #6b6863;
+  --subtle: #f1ede4;
+  --line: #e3ddd0;
+  --card: #ffffff;
+  --accent: #171614;
+}
+
+.dark {
+  --background: #100f0e;
+  --foreground: #f2efe9;
+  --muted: #a5a099;
+  --subtle: #1b1a18;
+  --line: #2a2825;
+  --card: #171614;
+  --accent: #f2efe9;
+}
+
+* {
+  border-color: var(--line);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-feature-settings: "kern", "liga", "calt";
+}
+
+::selection {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+/* Editorial article typography */
+.prose-editorial {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 1.2rem;
+  line-height: 1.75;
+  color: var(--foreground);
+}
+.prose-editorial h2 {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.9rem;
+  font-weight: 600;
+  margin: 2.2rem 0 0.9rem;
+  line-height: 1.2;
+}
+.prose-editorial h3 {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.45rem;
+  font-weight: 600;
+  margin: 1.8rem 0 0.7rem;
+}
+.prose-editorial p {
+  margin: 0 0 1.3rem;
+}
+.prose-editorial a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+.prose-editorial blockquote {
+  border-left: 3px solid var(--foreground);
+  padding-left: 1.2rem;
+  font-style: italic;
+  color: var(--muted);
+  margin: 1.6rem 0;
+}
+.prose-editorial img {
+  width: 100%;
+  border-radius: 2px;
+  margin: 1.8rem 0 0.5rem;
+}
+.prose-editorial figure figcaption,
+.prose-editorial img + em {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 0.4rem;
+}
+.prose-editorial ul,
+.prose-editorial ol {
+  margin: 0 0 1.3rem 1.2rem;
+}
+.prose-editorial ul {
+  list-style: disc;
+}
+.prose-editorial ol {
+  list-style: decimal;
+}
+.prose-editorial li {
+  margin-bottom: 0.4rem;
+}
+.prose-editorial hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 2.4rem 0;
+}
+
+/* TipTap placeholder */
+.ProseMirror:focus {
+  outline: none;
+}
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--muted);
+  pointer-events: none;
+  height: 0;
+}
+
+.hairline {
+  border-bottom: 1px solid var(--line);
+}
+
+.link-underline {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 0% 1px;
+  transition: background-size 0.3s ease;
+}
+.link-underline:hover {
+  background-size: 100% 1px;
+}
