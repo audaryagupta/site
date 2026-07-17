@@ -37,11 +37,11 @@ export function SiteFooter() {
 
         <div>
           <h4 className="text-xs uppercase tracking-widest text-muted">
-            The Friday Recap
+            The Weekly Recap
           </h4>
           <p className="mt-4 text-sm text-muted">
             The week&apos;s ten best stories in finance, business & tech —
-            curated, every Friday.
+            curated, every week.
           </p>
           <div className="mt-4">
             <SubscribeForm compact />

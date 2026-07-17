@@ -24,6 +24,7 @@ model Article {
   seoDescription  String?
   readingMinutes  Int       @default(1)
   views           Int       @default(0)
+  notifiedAt      DateTime?                 // when subscribers were emailed about this article
   publishedAt     DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -114,8 +115,23 @@ model Appointment {
   meetingLink    String?
   location       String?
   calendarEventId String?
+  cancelToken    String   @unique @default(cuid())
   adminNotes     String   @default("")
   createdAt      DateTime @default(now())
+}
+
+// Hidden easter egg: visitors can request a personalized birthday / anniversary
+// greeting from Audarya. Delivered manually from the admin dashboard.
+model GreetingRequest {
+  id         String   @id @default(cuid())
+  requesterName  String
+  requesterEmail String
+  occasion   String   @default("birthday") // birthday | anniversary
+  forName    String   @default("")
+  onDate     DateTime?
+  message    String   @default("")
+  status     String   @default("pending") // pending | sent | dismissed
+  createdAt  DateTime @default(now())
 }
 
 // Availability windows the admin publishes for the public booker. `kind`

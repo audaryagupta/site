@@ -18,7 +18,7 @@ async function sendWelcome(email: string, firstName: string, unsubToken: string)
       to: email,
       subject: `Welcome to ${site.name}`,
       html: `<p>Hi${hi},</p>
-        <p>Thanks for subscribing to <strong>${site.name}</strong>. Every Friday you'll get the ten stories that actually mattered in finance, business and tech — internationally and in the US — distilled into a five-minute read.</p>
+        <p>Thanks for subscribing to <strong>${site.name}</strong>. Every week you'll get the ten stories that actually mattered in finance, business and tech — internationally and in the US — distilled into a five-minute read.</p>
         <p>You'll also occasionally hear from me with new essays.</p>
         <p>— Audarya</p>
         <p style="font-size:12px;color:#888">Not for you? <a href="${absoluteUrl(
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
         );
       }
       return NextResponse.json({
-        message: "You're on the list — see you Friday.",
+        message: "You're on the list — talk soon.",
       });
     }
 
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     await sendWelcome(normalized, created.firstName, created.unsubToken);
 
     return NextResponse.json({
-      message: "You're in. The next Friday recap is headed your way.",
+      message: "You're in. The next Weekly Recap is headed your way.",
     });
   } catch (e) {
     if (e instanceof z.ZodError) {

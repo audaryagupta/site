@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
+import { Inter, Lora } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { site } from "@/lib/site";
 
-// All-sans, modern/minimal system: Space Grotesk for display headings,
-// Inter for body and reading. --font-serif is intentionally mapped to Inter
-// so long-form prose stays sans as well.
-const display = Space_Grotesk({
+// Editorial/corporate system: Lora serif for display headings and long-form
+// prose (--font-display / --font-serif), Inter for UI and body sans text.
+const display = Lora({
   subsets: ["latin"],
   variable: "--font-display",
   weight: ["400", "500", "600", "700"],
@@ -20,10 +19,10 @@ const sans = Inter({
   display: "swap",
 });
 
-const serif = Inter({
+const serif = Lora({
   subsets: ["latin"],
   variable: "--font-serif",
-  weight: ["400", "500", "600"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 

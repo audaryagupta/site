@@ -33,7 +33,7 @@ export async function POST(req: Request) {
       day: "numeric",
       timeZone: "Asia/Kolkata",
     });
-    const subject = `The Friday Recap — ${dateLabel}`;
+    const subject = `The Weekly Recap — ${dateLabel}`;
     // Web/archive preview (no personalization, sample unsub link)
     const previewHtml = renderRecapEmail({
       subject,

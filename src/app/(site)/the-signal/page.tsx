@@ -27,6 +27,25 @@ export default function SecretPage() {
         Reply to any of my emails with the word <em>“beetroot”</em> and I&apos;ll
         know you came from here.
       </p>
+
+      <div className="mt-10 flex flex-col items-center gap-2 border-t border-line pt-8 text-sm">
+        <p className="text-xs uppercase tracking-[0.3em] text-muted">
+          Two more doors
+        </p>
+        <Link
+          href="/who-said-it"
+          className="link-underline text-muted hover:text-foreground"
+        >
+          Play “Who said it?” — guess my quote, win a certificate →
+        </Link>
+        <Link
+          href="/celebrate"
+          className="link-underline text-muted hover:text-foreground"
+        >
+          Ask me to send someone a birthday / anniversary note →
+        </Link>
+      </div>
+
       <Link
         href="/"
         className="mt-10 link-underline text-sm text-muted hover:text-foreground"

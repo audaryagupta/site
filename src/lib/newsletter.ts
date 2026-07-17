@@ -76,7 +76,7 @@ ${url ? `<a href="${url}" style="font-family:Arial,sans-serif;font-size:13px;col
 
   const inner = `
 <tr><td style="padding:32px 32px 8px;">
-<p style="margin:0;font-family:Arial,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${MUTED};">The Friday Recap</p>
+<p style="margin:0;font-family:Arial,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${MUTED};">The Weekly Recap</p>
 <h1 style="margin:8px 0 0;font-size:30px;line-height:1.15;">${escapeHtml(subject)}</h1>
 </td></tr>
 <tr><td style="padding:16px 32px 24px;">

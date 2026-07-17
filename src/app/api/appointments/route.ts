@@ -40,23 +40,44 @@ export async function POST(req: Request) {
       },
     });
 
-    if (emailConfigured() && process.env.ADMIN_EMAIL) {
+    if (emailConfigured()) {
+      // Notify the admin
+      if (process.env.ADMIN_EMAIL) {
+        try {
+          await sendEmail({
+            to: process.env.ADMIN_EMAIL,
+            replyTo: data.email,
+            subject: `New appointment request from ${data.name}`,
+            html: `<p><strong>${escapeHtml(data.name)}</strong> requested a ${
+              data.mode
+            } meeting.</p>
+            <p>When: ${formatDateTime(start)} IST (${data.duration} min)<br/>
+            Contact: ${escapeHtml(data.email)}${
+              data.phone ? `, ${escapeHtml(data.phone)}` : ""
+            }</p>
+            <p>Purpose: ${escapeHtml(data.purpose) || "—"}</p>
+            <p><a href="${absoluteUrl(
+              "/admin/appointments"
+            )}">Review in dashboard →</a></p>`,
+          });
+        } catch {
+          // ignore
+        }
+      }
+      // Acknowledge the requester
       try {
         await sendEmail({
-          to: process.env.ADMIN_EMAIL,
-          replyTo: data.email,
-          subject: `New appointment request from ${data.name}`,
-          html: `<p><strong>${escapeHtml(data.name)}</strong> requested a ${
-            data.mode
-          } meeting.</p>
-          <p>When: ${formatDateTime(start)} IST (${data.duration} min)<br/>
-          Contact: ${escapeHtml(data.email)}${
-            data.phone ? `, ${escapeHtml(data.phone)}` : ""
-          }</p>
-          <p>Purpose: ${escapeHtml(data.purpose) || "—"}</p>
-          <p><a href="${absoluteUrl(
-            "/admin/appointments"
-          )}">Review in dashboard →</a></p>`,
+          to: data.email,
+          subject: "Your appointment request was received",
+          html: `<p>Hi ${escapeHtml(data.name)},</p>
+          <p>Thanks — your request for a <strong>${
+            data.mode === "physical" ? "in-person" : data.mode
+          } meeting</strong> on <strong>${formatDateTime(
+            start
+          )} IST</strong> has been received.</p>
+          <p>I review every request personally. Once I accept it, you&apos;ll
+          get a confirmation with a calendar invite and the meeting details.</p>
+          <p>— Audarya</p>`,
         });
       } catch {
         // ignore

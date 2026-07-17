@@ -42,7 +42,7 @@ export default async function HomePage() {
                 href="/newsletter"
                 className="link-underline text-sm text-muted hover:text-foreground"
               >
-                Get the Friday recap
+                Get the Weekly Recap
               </Link>
             </div>
           </div>
@@ -174,10 +174,10 @@ export default async function HomePage() {
         <Container className="grid gap-8 py-16 md:grid-cols-2 md:items-center">
           <div>
             <h2 className="font-display text-3xl font-semibold">
-              The Friday Recap
+              The Weekly Recap
             </h2>
             <p className="mt-3 max-w-md font-serif text-muted">
-              Every Friday: the ten stories that actually mattered in finance,
+              Every week: the ten stories that actually mattered in finance,
               business and tech — internationally and in the US — distilled into
               a five-minute read.
             </p>

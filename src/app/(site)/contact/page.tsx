@@ -97,7 +97,15 @@ export default async function ContactPage() {
           )}
 
           <div className="mt-6">
-            <AppointmentBooker />
+            <AppointmentBooker
+              windows={availability.map((w) => ({
+                kind: w.kind,
+                city: w.city,
+                dayOfWeek: w.dayOfWeek,
+                startTime: w.startTime,
+                endTime: w.endTime,
+              }))}
+            />
           </div>
         </section>
       </div>

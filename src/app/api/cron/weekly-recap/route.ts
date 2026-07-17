@@ -39,7 +39,7 @@ async function run(req: Request) {
     day: "numeric",
     timeZone: "America/New_York",
   });
-  const subject = `The Friday Recap — ${dateLabel}`;
+  const subject = `The Weekly Recap — ${dateLabel}`;
   const previewHtml = renderRecapEmail({ subject, data, unsubUrl: "#" });
 
   // Draft is created in "pending_approval" — nothing is sent to subscribers.
@@ -61,7 +61,7 @@ async function run(req: Request) {
       await sendEmail({
         to: process.env.ADMIN_EMAIL,
         subject: `[Approve] ${subject} is ready for review`,
-        html: `<p>This week's Friday Recap draft is ready.</p>
+        html: `<p>This week's Weekly Recap draft is ready.</p>
         <p>Review, edit and approve it before it goes out:</p>
         <p><a href="${absoluteUrl(
           `/admin/newsletters/${nl.id}`

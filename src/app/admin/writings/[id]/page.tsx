@@ -31,6 +31,7 @@ export default async function EditArticlePage({
     featured: article.featured,
     seoTitle: article.seoTitle || "",
     seoDescription: article.seoDescription || "",
+    notifiedAt: article.notifiedAt ? article.notifiedAt.toISOString() : null,
   };
 
   return (

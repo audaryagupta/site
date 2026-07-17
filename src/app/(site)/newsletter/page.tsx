@@ -8,9 +8,9 @@ import { formatDate } from "@/lib/utils";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "Newsletter — The Friday Recap",
+  title: "Newsletter — The Weekly Recap",
   description:
-    "The week's ten best stories in finance, business and tech, every Friday.",
+    "The week's ten best stories in finance, business and tech, every week.",
 };
 
 export default async function NewsletterPage() {
@@ -20,10 +20,10 @@ export default async function NewsletterPage() {
     <Container className="py-16">
       <div className="mx-auto max-w-2xl text-center">
         <p className="text-xs uppercase tracking-[0.25em] text-muted">
-          The Friday Recap
+          The Weekly Recap
         </p>
         <h1 className="mt-4 font-display text-5xl font-semibold tracking-tight">
-          Ten stories. Five minutes. Every Friday.
+          Ten stories. Five minutes. Every week.
         </h1>
         <p className="mt-5 font-serif text-lg text-muted">
           A curated recap of the week&apos;s most important news in finance,

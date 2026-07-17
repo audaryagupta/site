@@ -4,7 +4,7 @@ import { guard } from "@/lib/adminApi";
 import { createCalendarEvent, googleConfigured, isBusy } from "@/lib/google";
 import { createZoomMeeting, zoomConfigured } from "@/lib/zoom";
 import { emailConfigured, sendEmail } from "@/lib/email";
-import { escapeHtml, formatDateTime } from "@/lib/utils";
+import { absoluteUrl, escapeHtml, formatDateTime } from "@/lib/utils";
 
 export async function PATCH(
   req: Request,
@@ -120,11 +120,12 @@ export async function PATCH(
         : meetingLink
           ? `<p><strong>Join:</strong> <a href="${meetingLink}">${meetingLink}</a></p>`
           : "";
+    const cancelUrl = absoluteUrl(`/appointments/cancel?token=${appt.cancelToken}`);
     try {
       await sendEmail({
         to: appt.email,
         subject: "Your appointment is confirmed",
-        html: `<p>Hi ${escapeHtml(appt.name)},</p><p>Your appointment is confirmed for <strong>${formatDateTime(appt.requestedStart)} IST</strong>.</p>${details}<p>Looking forward to it.</p><p>— Audarya</p>`,
+        html: `<p>Hi ${escapeHtml(appt.name)},</p><p>Your appointment is confirmed for <strong>${formatDateTime(appt.requestedStart)} IST</strong>.</p>${details}<p>Looking forward to it.</p><p>— Audarya</p><p style="font-size:12px;color:#888">Need to cancel? <a href="${cancelUrl}">Cancel this appointment</a>.</p>`,
       });
     } catch {
       /* ignore */

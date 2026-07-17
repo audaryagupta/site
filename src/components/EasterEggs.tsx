@@ -59,8 +59,11 @@ export function EasterEggs() {
   if (!reveal) return null;
 
   return (
-    <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-fade-up rounded-full border border-line bg-card px-5 py-3 text-sm shadow-xl">
-      ✦ &ldquo;Any information that leaves you becomes 2× more useful.&rdquo; — Audarya
-    </div>
+    <a
+      href="/who-said-it"
+      className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-fade-up rounded-full border border-line bg-card px-5 py-3 text-sm shadow-xl transition hover:bg-subtle"
+    >
+      ✦ Or was it? Play &ldquo;Who said it?&rdquo; →
+    </a>
   );
 }

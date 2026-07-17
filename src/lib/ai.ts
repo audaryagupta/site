@@ -150,7 +150,7 @@ export async function generateRecap(): Promise<{
     timeZone: "Asia/Kolkata",
   });
 
-  const system = `You are the editor of "The Friday Recap", a weekly newsletter by Audarya Gupta covering the most important news in business, finance and technology — both international and United States. You write with insight, concision and a warm personal voice.`;
+  const system = `You are the editor of "The Weekly Recap", a weekly newsletter by Audarya Gupta covering the most important news in business, finance and technology — both international and United States. You write with insight, concision and a warm personal voice.`;
 
   const groundingBlock = grounded
     ? `Here are candidate headlines from this week (JSON). Select and rank the 10 most important, mixing international and US stories across business, finance and tech. Use ONLY urls, sources and image links from this list. Do not invent URLs.\n\n${JSON.stringify(

@@ -22,7 +22,7 @@ export function SubscribeForm({ compact = false }: { compact?: boolean }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Something went wrong");
       setStatus("done");
-      setMessage(data.message || "You're in. Watch for Friday's recap.");
+      setMessage(data.message || "You're in. Watch for the next recap.");
       setFirstName("");
       setEmail("");
     } catch (err) {
