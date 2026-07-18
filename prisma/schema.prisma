@@ -203,6 +203,39 @@ model EmailBlacklist {
   createdAt DateTime @default(now())
 }
 
+// A unique website visitor, identified by a first-party id stored in the
+// browser. Used for new-vs-repeat and unique-visitor analytics.
+model Visitor {
+  id           String   @id // client-generated id (stored in localStorage)
+  firstSeen    DateTime @default(now())
+  lastSeen     DateTime @default(now())
+  sessionCount Int      @default(1)
+  pageviews    PageView[]
+
+  @@index([firstSeen])
+}
+
+// A single page view on the public site. Sessions are grouped by sessionId so
+// we can derive session counts and average session duration. `source` buckets
+// traffic (organic search / direct / social / referral / internal).
+model PageView {
+  id           String   @id @default(cuid())
+  visitorId    String
+  sessionId    String
+  path         String   @default("/")
+  referrerHost String   @default("")
+  source       String   @default("direct") // organic | direct | social | referral | internal
+  device       String   @default("desktop") // mobile | tablet | desktop
+  isNewVisitor Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  visitor      Visitor  @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([sessionId])
+  @@index([visitorId])
+}
+
 // System log of major actions (article published, contact added, appointment
 // accepted, newsletter sent…). Not UI clicks. Exported monthly to Google Drive.
 model ActivityLog {

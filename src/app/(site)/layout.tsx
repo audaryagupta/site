@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { headers } from "next/headers";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ComingSoon } from "@/components/ComingSoon";
+import { VisitTracker } from "@/components/VisitTracker";
 import { getSettings } from "@/lib/queries";
 
 // Pre-launch, the primary production domain shows a teaser until you "Go live"
@@ -28,6 +30,9 @@ export default async function SiteLayout({
 
   return (
     <div className="flex min-h-screen flex-col">
+      <Suspense fallback={null}>
+        <VisitTracker />
+      </Suspense>
       <SiteHeader />
       <main className="flex-1">{children}</main>
       <SiteFooter />

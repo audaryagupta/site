@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Eye, Heart, MessageSquare, Clock } from "lucide-react";
+import { SiteTraffic } from "@/components/admin/SiteTraffic";
 
 interface Row {
   id: string;
@@ -33,6 +34,7 @@ export default function AnalyticsPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [totals, setTotals] = useState<Totals | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [tab, setTab] = useState<"traffic" | "articles">("traffic");
 
   async function load() {
     const res = await fetch("/api/admin/analytics");
@@ -72,11 +74,44 @@ export default function AnalyticsPage() {
   return (
     <div>
       <h1 className="font-display text-2xl font-semibold">Analytics</h1>
-      <p className="mt-1 max-w-2xl text-sm text-muted">
-        Real numbers are what actually happened. The <strong>boost</strong> is
-        added only to the public count shown on the site — the “Public” columns
-        are what visitors see. Reading time and comments are shown per article.
-      </p>
+
+      <div className="mt-4 flex gap-1 border-b border-line">
+        <button
+          onClick={() => setTab("traffic")}
+          className={
+            "-mb-px border-b-2 px-4 py-2 text-sm font-medium transition " +
+            (tab === "traffic"
+              ? "border-foreground text-foreground"
+              : "border-transparent text-muted hover:text-foreground")
+          }
+        >
+          Site traffic
+        </button>
+        <button
+          onClick={() => setTab("articles")}
+          className={
+            "-mb-px border-b-2 px-4 py-2 text-sm font-medium transition " +
+            (tab === "articles"
+              ? "border-foreground text-foreground"
+              : "border-transparent text-muted hover:text-foreground")
+          }
+        >
+          Articles
+        </button>
+      </div>
+
+      {tab === "traffic" ? (
+        <div className="mt-6">
+          <SiteTraffic />
+        </div>
+      ) : (
+        <div className="mt-6">
+          <p className="max-w-2xl text-sm text-muted">
+            Real numbers are what actually happened. The <strong>boost</strong>{" "}
+            is added only to the public count shown on the site — the “Public”
+            columns are what visitors see. Reading time and comments are shown
+            per article.
+          </p>
 
       {totals && (
         <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -167,6 +202,8 @@ export default function AnalyticsPage() {
           </tbody>
         </table>
       </div>
+        </div>
+      )}
     </div>
   );
 }
