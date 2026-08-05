@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { NotFoundArcade } from "@/components/NotFoundArcade";
+import { TicTacToe } from "@/components/TicTacToe";
 
 export const metadata: Metadata = {
   title: "Page not found",
@@ -111,12 +111,13 @@ export default function NotFound() {
         Looks like this page wandered off into the desert.
       </h1>
       <p className="mt-3 max-w-md font-serif text-lg leading-relaxed text-muted">
-        The link you followed doesn&apos;t exist (anymore). No pressure — pass
-        the time with a quick game while you decide where to head next.
+        The link you followed doesn&apos;t exist (anymore). No pressure — play
+        a round of tic-tac-toe against the house while you decide where to head
+        next.
       </p>
 
-      <div className="mt-8 w-full max-w-xl">
-        <NotFoundArcade />
+      <div className="mt-8 w-full max-w-md">
+        <TicTacToe />
       </div>
 
       <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-sm">

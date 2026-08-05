@@ -67,6 +67,19 @@ function bestMoveForO(b: Board): number {
   return move;
 }
 
+// How often the computer plays the perfect move; the rest of the time it makes
+// a human-like slip (random legal move). Tuned by simulation so a well-played
+// game is winnable roughly half the time, keeping it fun rather than hopeless.
+const SKILL = 0.72;
+
+function chooseMoveForO(b: Board): number {
+  const empties: number[] = [];
+  for (let i = 0; i < 9; i++) if (b[i] === "") empties.push(i);
+  if (empties.length === 0) return -1;
+  if (Math.random() < SKILL) return bestMoveForO(b);
+  return empties[Math.floor(Math.random() * empties.length)];
+}
+
 export function TicTacToe() {
   const [board, setBoard] = useState<Board>(Array(9).fill(""));
   const [busy, setBusy] = useState(false);
@@ -98,7 +111,7 @@ export function TicTacToe() {
       return;
     }
     const t = setTimeout(() => {
-      const move = bestMoveForO(board.slice());
+      const move = chooseMoveForO(board.slice());
       if (move >= 0) {
         setBoard((prev) => {
           if (prev[move] !== "" || winnerOf(prev) || isFull(prev)) return prev;
@@ -127,8 +140,8 @@ export function TicTacToe() {
 
   const status = win
     ? win.player === "X"
-      ? "You win! (nice — that shouldn't happen)"
-      : "Computer wins."
+      ? "You win! Nicely played."
+      : "Computer wins — go again?"
     : isFull(board)
       ? "A draw — well played."
       : busy
