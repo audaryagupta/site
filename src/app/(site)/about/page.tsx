@@ -55,7 +55,7 @@ export default async function AboutPage() {
     <Container className="py-16 lg:py-20">
       <div className="grid gap-12 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
         <aside className="lg:sticky lg:top-24">
-          <div className="rounded-[1.5rem] border border-line bg-card p-3 shadow-xl shadow-foreground/5">
+          <div className="mx-auto max-w-[15rem] rounded-[1.5rem] border border-line bg-card p-3 shadow-xl shadow-foreground/5 sm:max-w-xs lg:max-w-none">
             <EditableImage
               id="about.image"
               src={portrait.src}

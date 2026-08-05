@@ -242,13 +242,16 @@ export function SiteTraffic() {
           <div className="mt-6 rounded-lg border border-line bg-card p-5">
             <h3 className="text-sm font-semibold">Visitors by month</h3>
             <p className="text-xs text-muted">Last 12 months · page views</p>
-            <div className="mt-5 flex h-40 items-end gap-2">
+            <div className="mt-5 flex h-44 items-end gap-2">
               {data!.monthly.map((m) => (
-                <div key={m.month} className="flex flex-1 flex-col items-center gap-1">
+                <div
+                  key={m.month}
+                  className="flex h-full flex-1 flex-col items-center justify-end gap-1"
+                >
                   <span className="text-[10px] text-muted">{m.pageviews || ""}</span>
                   <div
-                    className="w-full rounded-t bg-foreground/80 transition-all"
-                    style={{ height: `${(m.pageviews / maxMonthly) * 100}%`, minHeight: m.pageviews ? 3 : 0 }}
+                    className="w-full rounded-t bg-foreground transition-all"
+                    style={{ height: `${(m.pageviews / maxMonthly) * 88}%`, minHeight: m.pageviews ? 3 : 0 }}
                     title={`${m.label}: ${fmt(m.pageviews)} views, ${fmt(m.sessions)} visits, ${fmt(m.newVisitors)} new`}
                   />
                   <span className="text-[10px] text-muted">{m.label.split(" ")[0]}</span>
@@ -371,12 +374,11 @@ function TrendChart({ points }: { points: SeriesPoint[] }) {
   );
 }
 
-const DONUT_COLORS = [
-  { stroke: "text-foreground", swatch: "bg-foreground" },
-  { stroke: "text-foreground/55", swatch: "bg-foreground/55" },
-  { stroke: "text-foreground/30", swatch: "bg-foreground/30" },
-  { stroke: "text-foreground/15", swatch: "bg-foreground/15" },
-];
+// Opacity steps for successive donut segments. We apply these as an inline
+// `opacity` (not a Tailwind `/xx` modifier) because `--foreground` is a hex
+// literal, so `bg-foreground/55` compiles to an invalid color and renders
+// transparent.
+const DONUT_OPACITY = [1, 0.55, 0.3, 0.15];
 
 function Donut({
   title,
@@ -403,7 +405,7 @@ function Donut({
       dash,
       gap: C - dash,
       off: -offset,
-      color: DONUT_COLORS[i % DONUT_COLORS.length].stroke,
+      opacity: DONUT_OPACITY[i % DONUT_OPACITY.length],
     };
     offset += dash;
     return el;
@@ -425,11 +427,12 @@ function Donut({
                 cy="50"
                 r={R}
                 fill="none"
-                className={a.color}
+                className="text-foreground"
                 stroke="currentColor"
                 strokeWidth="12"
                 strokeDasharray={`${a.dash} ${a.gap}`}
                 strokeDashoffset={a.off}
+                style={{ opacity: a.opacity }}
               />
             ))}
           </svg>
@@ -442,10 +445,8 @@ function Donut({
           {segments.map((seg, i) => (
             <div key={seg.label} className="flex items-center gap-2 text-xs">
               <span
-                className={
-                  "inline-block h-2.5 w-2.5 flex-none rounded-sm " +
-                  DONUT_COLORS[i % DONUT_COLORS.length].swatch
-                }
+                className="inline-block h-2.5 w-2.5 flex-none rounded-sm bg-foreground"
+                style={{ opacity: DONUT_OPACITY[i % DONUT_OPACITY.length] }}
               />
               <span className="truncate">{seg.label}</span>
               <span className="ml-auto flex-none text-muted">
@@ -462,17 +463,30 @@ function Donut({
 function WeekdayChart({ rows }: { rows: DayRow[] }) {
   const max = Math.max(1, ...rows.map((r) => r.avg));
   return (
-    <div className="mt-5 flex h-32 items-end gap-1.5">
-      {rows.map((r) => (
-        <div key={r.day} className="flex flex-1 flex-col items-center gap-1">
+    <div className="mt-5">
+      <div className="flex h-28 items-end gap-1.5">
+        {rows.map((r) => (
           <div
-            className="w-full rounded-t bg-foreground/80 transition-all"
-            style={{ height: `${(r.avg / max) * 100}%`, minHeight: r.avg ? 3 : 0 }}
+            key={r.day}
+            className="flex-1 rounded-t bg-foreground transition-all"
+            style={{
+              height: r.avg ? `${Math.max((r.avg / max) * 100, 6)}%` : 2,
+              minHeight: r.avg ? 4 : 2,
+            }}
             title={`${r.day}: ${r.avg} avg visits/day · ${fmt(r.total)} total`}
           />
-          <span className="text-[10px] text-muted">{r.day[0]}</span>
-        </div>
-      ))}
+        ))}
+      </div>
+      <div className="mt-1 flex gap-1.5">
+        {rows.map((r) => (
+          <span
+            key={r.day}
+            className="flex-1 text-center text-[10px] text-muted"
+          >
+            {r.day[0]}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -527,8 +541,8 @@ function Breakdown({
             </div>
             <div className="mt-1 h-2 overflow-hidden rounded-full bg-subtle">
               <div
-                className="h-full rounded-full bg-foreground/80"
-                style={{ width: `${(r.value / total) * 100}%` }}
+                className="h-full rounded-full bg-foreground"
+                style={{ width: `${(r.value / total) * 100}%`, opacity: 0.8 }}
               />
             </div>
           </div>
@@ -569,8 +583,8 @@ function TopList({
             </div>
             <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-subtle">
               <div
-                className="h-full rounded-full bg-foreground/60"
-                style={{ width: `${(r.value / max) * 100}%` }}
+                className="h-full rounded-full bg-foreground"
+                style={{ width: `${(r.value / max) * 100}%`, opacity: 0.6 }}
               />
             </div>
           </div>
