@@ -44,10 +44,10 @@ export default async function AboutPage() {
   );
   const portrait = pickImage(content, "about.image", {
     src: settings.about_image || "/audarya/audarya-portrait-red.jpg",
-    // "contain" + a generous frame so the full portrait shows with padding and
-    // no part of her face is cropped.
-    fit: "contain",
-    height: 560,
+    // The portrait is a 2:3 image and the frame below is locked to 2:3, so
+    // "cover" fills it edge-to-edge with no white margin and nothing cropped.
+    fit: "cover",
+    height: null,
     radius: 18,
   });
 
@@ -68,7 +68,7 @@ export default async function AboutPage() {
               className={
                 portrait.height
                   ? "w-full bg-subtle"
-                  : "aspect-[4/5] w-full bg-subtle"
+                  : "aspect-[2/3] w-full bg-subtle"
               }
             />
           </div>
