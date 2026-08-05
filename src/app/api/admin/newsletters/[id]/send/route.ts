@@ -51,7 +51,11 @@ export async function POST(
     ? (JSON.parse(nl.dataJson) as RecapData)
     : null;
 
-  function buildFor(r: { email: string; firstName?: string }) {
+  function buildFor(r: {
+    email: string;
+    firstName?: string;
+    addedNote?: boolean;
+  }) {
     const unsubUrl = absoluteUrl(`/api/unsubscribe?token=__TOKEN__`);
     if (nl!.type === "recap" && recapData) {
       return {
@@ -61,6 +65,7 @@ export async function POST(
           subject: nl!.subject,
           data: recapData,
           unsubUrl,
+          addedNote: r.addedNote,
         }),
       };
     }
@@ -72,6 +77,7 @@ export async function POST(
         bodyHtml: nl!.contentHtml,
         previewText: nl!.previewText,
         unsubUrl,
+        addedNote: r.addedNote,
       }),
     };
   }
@@ -94,7 +100,13 @@ export async function POST(
     data: { status: "sending" },
   });
 
-  let recipients: { email: string; firstName?: string; token: string }[] = [];
+  let recipients: {
+    id?: string;
+    email: string;
+    firstName?: string;
+    token: string;
+    addedNote?: boolean;
+  }[] = [];
   if (nl.audience === "contacts") {
     const contacts = await prisma.contact.findMany();
     recipients = contacts.map((c) => ({
@@ -107,9 +119,13 @@ export async function POST(
       where: { status: "active" },
     });
     recipients = subs.map((s) => ({
+      id: s.id,
       email: s.email,
       firstName: s.firstName,
       token: s.unsubToken,
+      // Owner-added folks get the "Audarya added you" note on their first
+      // four newsletters (welcomeRemaining counts down after each send).
+      addedNote: s.addedByOwner && s.welcomeRemaining > 0,
     }));
   }
 
@@ -117,13 +133,34 @@ export async function POST(
   recipients = await filterBlacklisted(recipients);
 
   const { sent, errors } = await sendBulk(recipients, (r) => {
-    const token = (r as { token?: string }).token || "";
-    const built = buildFor(r);
+    const rr = r as (typeof recipients)[number];
+    const built = buildFor({
+      email: rr.email,
+      firstName: rr.firstName,
+      addedNote: rr.addedNote,
+    });
     return {
       subject: built.subject,
-      html: built.html.replace(/__TOKEN__/g, token),
+      html: built.html.replace(/__TOKEN__/g, rr.token || ""),
     };
   });
+
+  // Decrement the welcome-note counter only for subscribers that actually
+  // received this newsletter (skip ones whose send errored).
+  const failedEmails = new Set(errors.map((e) => e.email));
+  const toDecrement = recipients.filter(
+    (r) => r.id && r.addedNote && !failedEmails.has(r.email)
+  );
+  if (toDecrement.length) {
+    await prisma.$transaction(
+      toDecrement.map((r) =>
+        prisma.subscriber.update({
+          where: { id: r.id },
+          data: { welcomeRemaining: { decrement: 1 } },
+        })
+      )
+    );
+  }
 
   await prisma.newsletter.update({
     where: { id: nl.id },

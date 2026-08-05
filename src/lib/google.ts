@@ -49,11 +49,20 @@ export async function listCalendars(): Promise<CalendarSummary[]> {
 
 // Scopes requested when the admin connects Google. Sign-in (comments) uses
 // NextAuth separately and does NOT request these, so ordinary visitors are
-// never prompted. Covers calendar (booking), Drive (monthly log export +
-// letterhead/certificate docs) and Docs (filling templates).
+// never prompted.
+//
+// IMPORTANT: Calendar is requested on its own by default. Drive + Docs are
+// Google "restricted" scopes — requesting them for an unverified app makes
+// Google block the whole consent flow ("Access blocked / app not verified"),
+// which is what broke calendar authorization. Drive/Docs (monthly log export,
+// letterhead) are opt-in via the "extended" connect only.
 export const CALENDAR_SCOPES = [
   "https://www.googleapis.com/auth/calendar",
   "https://www.googleapis.com/auth/calendar.events",
+];
+
+export const EXTENDED_SCOPES = [
+  ...CALENDAR_SCOPES,
   "https://www.googleapis.com/auth/drive",
   "https://www.googleapis.com/auth/documents",
 ];
@@ -90,20 +99,32 @@ function newOAuthClient() {
   );
 }
 
-/** Build the Google consent URL for connecting a calendar (offline + consent). */
-export function calendarConsentUrl(): string {
+/**
+ * Build the Google consent URL for connecting a calendar (offline + consent).
+ * By default only Calendar scopes are requested; pass `extended` to also ask
+ * for Drive/Docs (needed for log export / letterhead).
+ */
+export function calendarConsentUrl(extended = false): string {
   return newOAuthClient().generateAuthUrl({
     access_type: "offline",
     prompt: "consent",
-    scope: CALENDAR_SCOPES,
+    include_granted_scopes: true,
+    scope: extended ? EXTENDED_SCOPES : CALENDAR_SCOPES,
   });
 }
 
-/** Exchange the OAuth code for a refresh token and persist it. */
+/**
+ * Exchange the OAuth code for a refresh token and persist it. Google only
+ * returns a refresh token on the first consent unless prompt=consent is used
+ * (we do). If none comes back but we already have one stored, keep it.
+ */
 export async function connectCalendarFromCode(code: string): Promise<boolean> {
   const client = newOAuthClient();
   const { tokens } = await client.getToken(code);
-  if (!tokens.refresh_token) return false;
+  if (!tokens.refresh_token) {
+    // No new refresh token — succeed only if we already have one stored.
+    return Boolean(await getRefreshToken());
+  }
   await prisma.setting.upsert({
     where: { key: "gcal_refresh_token" },
     update: { value: tokens.refresh_token },

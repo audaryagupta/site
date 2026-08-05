@@ -45,6 +45,22 @@ function istTime(iso: string): string {
   }).format(new Date(iso));
 }
 
+// Turns a raw Google OAuth error into plain, actionable guidance.
+function explainGcalError(detail: string | null): string {
+  const d = (detail || "").toLowerCase();
+  if (d.includes("redirect_uri_mismatch"))
+    return "The redirect URI below isn't registered on your Google Cloud OAuth client. Add it exactly (Authorized redirect URIs), save, wait a minute, then reconnect.";
+  if (d.includes("access_denied"))
+    return "Access was denied on the consent screen. If your Google Cloud consent screen is in 'Testing' mode, add your email as a Test user (or Publish the app), then reconnect.";
+  if (d.includes("admin_policy") || d.includes("org_internal"))
+    return "Your Google Workspace admin policy is blocking this app. Set the OAuth consent screen to 'Internal', or ask the admin to allow it, then reconnect.";
+  if (d.includes("invalid_grant"))
+    return "The authorization expired or was already used. Click Connect and complete the flow in one go.";
+  if (d.includes("verif"))
+    return "Google is blocking an unverified app requesting sensitive scopes. Use the Calendar-only connect (below) — it avoids the Drive/Docs scopes that trigger this.";
+  return "Complete the Google consent screen and allow calendar access. If it keeps failing, check the redirect URI and consent-screen test users in Google Cloud.";
+}
+
 export default function CalendarPage() {
   const [status, setStatus] = useState<{
     connected: boolean;
@@ -61,6 +77,10 @@ export default function CalendarPage() {
   const banner =
     typeof window !== "undefined"
       ? new URLSearchParams(window.location.search).get("gcal")
+      : null;
+  const bannerDetail =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("detail")
       : null;
 
   const loadEvents = useCallback(async () => {
@@ -147,9 +167,15 @@ export default function CalendarPage() {
         </p>
       )}
       {(banner === "error" || banner === "noretoken") && (
-        <p className="mt-4 rounded-md border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm">
-          Couldn&apos;t connect. Try again — make sure to allow calendar access.
-        </p>
+        <div className="mt-4 rounded-md border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm">
+          <p className="font-medium">Couldn&apos;t connect Google Calendar.</p>
+          <p className="mt-1 text-muted">{explainGcalError(bannerDetail)}</p>
+          {bannerDetail && (
+            <p className="mt-1 text-xs text-muted">
+              Google said: <code>{bannerDetail}</code>
+            </p>
+          )}
+        </div>
       )}
 
       {status && !status.connected && (
@@ -172,12 +198,24 @@ export default function CalendarPage() {
               <code className="mt-2 block break-all rounded-md bg-subtle px-3 py-2 text-xs">
                 {status.redirectUri}
               </code>
-              <a
-                href="/api/admin/google/connect"
-                className="mt-4 inline-flex items-center gap-2 rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background"
-              >
-                <Link2 size={15} /> Connect Google Calendar
-              </a>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <a
+                  href="/api/admin/google/connect"
+                  className="inline-flex items-center gap-2 rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background"
+                >
+                  <Link2 size={15} /> Connect Google Calendar
+                </a>
+                <a
+                  href="/api/admin/google/connect?extended=1"
+                  className="text-xs text-muted underline hover:text-foreground"
+                >
+                  Also enable Drive/Docs (log export &amp; letterhead)
+                </a>
+              </div>
+              <p className="mt-2 text-xs text-muted">
+                Calendar-only avoids Google&apos;s Drive/Docs verification
+                prompt, so it connects even before the app is verified.
+              </p>
             </>
           )}
         </div>

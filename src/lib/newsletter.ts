@@ -39,6 +39,16 @@ const INK = "#171614";
 const MUTED = "#6b6863";
 const LINE = "#e3ddd0";
 
+// Shown at the very top of the first few newsletters sent to people Audarya
+// added manually (e.g. merged from her old blog), so they know why they're
+// hearing from her.
+function addedBanner(): string {
+  return `<tr><td style="padding:20px 32px 0;">
+<div style="background:${INK};color:#ffffff;border-radius:6px;padding:14px 18px;">
+<p style="margin:0;font-family:Arial,sans-serif;font-size:14px;line-height:1.55;">Audarya Gupta has added you to the newsletter. If we've crossed paths — through the old blog or otherwise — this is where the writing continues. You can unsubscribe anytime.</p>
+</div></td></tr>`;
+}
+
 function shell(inner: string, unsubUrl: string, preview: string) {
   return `<!doctype html><html><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
@@ -63,8 +73,9 @@ export function renderRecapEmail(opts: {
   subject: string;
   data: RecapData;
   unsubUrl: string;
+  addedNote?: boolean;
 }) {
-  const { firstName, subject, data, unsubUrl } = opts;
+  const { firstName, subject, data, unsubUrl, addedNote } = opts;
   const greeting = firstName ? `Hi ${escapeHtml(firstName)},` : "Hi there,";
 
   const stories = data.stories
@@ -132,6 +143,7 @@ ${
       : "";
 
   const inner = `
+${addedNote ? addedBanner() : ""}
 <tr><td style="padding:32px 32px 8px;">
 <p style="margin:0;font-family:Arial,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${MUTED};">The Weekly Recap</p>
 <h1 style="margin:8px 0 0;font-size:30px;line-height:1.15;">${escapeHtml(subject)}</h1>
@@ -159,10 +171,13 @@ export function renderGenericEmail(opts: {
   bodyHtml: string;
   unsubUrl: string;
   previewText?: string;
+  addedNote?: boolean;
 }) {
-  const { firstName, subject, bodyHtml, unsubUrl, previewText } = opts;
+  const { firstName, subject, bodyHtml, unsubUrl, previewText, addedNote } =
+    opts;
   const greeting = firstName ? `<p style="margin:0 0 16px;font-size:16px;">Hi ${escapeHtml(firstName)},</p>` : "";
   const inner = `
+${addedNote ? addedBanner() : ""}
 <tr><td style="padding:32px 32px 8px;">
 <h1 style="margin:0;font-size:28px;line-height:1.2;">${escapeHtml(subject)}</h1>
 </td></tr>

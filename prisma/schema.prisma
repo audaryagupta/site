@@ -64,6 +64,11 @@ model Subscriber {
   status      String   @default("active") // active | unsubscribed
   unsubToken  String   @unique @default(cuid())
   source      String   @default("website")
+  // Owner-added subscribers (e.g. merged from the old blog) can be told they
+  // were added; welcomeRemaining counts how many upcoming newsletters carry
+  // that note (starts at 4, decrements per send).
+  addedByOwner    Boolean @default(false)
+  welcomeRemaining Int    @default(0)
   createdAt   DateTime @default(now())
 }
 

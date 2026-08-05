@@ -21,6 +21,10 @@ const nextConfig = {
       { source: "/blog/:path*", destination: "/writings", permanent: true },
       // The public link hub (linktree-style) lives at /qr.
       { source: "/links", destination: "/qr", permanent: true },
+      // Appointments, calendar and availability were merged into Scheduling.
+      { source: "/admin/appointments", destination: "/admin/scheduling", permanent: false },
+      { source: "/admin/calendar", destination: "/admin/scheduling", permanent: false },
+      { source: "/admin/availability", destination: "/admin/scheduling", permanent: false },
     ];
   },
 };

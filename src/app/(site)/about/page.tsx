@@ -43,15 +43,19 @@ export default async function AboutPage() {
     settings.about_role || "Founder, byAudarya & VentureBuz"
   );
   const portrait = pickImage(content, "about.image", {
-    src: settings.about_image || "/audarya/audarya-portrait-blue.jpg",
-    radius: 24,
+    src: settings.about_image || "/audarya/audarya-portrait-red.jpg",
+    // "contain" + a generous frame so the full portrait shows with padding and
+    // no part of her face is cropped.
+    fit: "contain",
+    height: 560,
+    radius: 18,
   });
 
   return (
     <Container className="py-16 lg:py-20">
       <div className="grid gap-12 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
         <aside className="lg:sticky lg:top-24">
-          <div className="rounded-[1.5rem] border border-line bg-card shadow-xl shadow-foreground/5">
+          <div className="rounded-[1.5rem] border border-line bg-card p-3 shadow-xl shadow-foreground/5">
             <EditableImage
               id="about.image"
               src={portrait.src}
@@ -61,7 +65,11 @@ export default async function AboutPage() {
               posY={portrait.posY}
               height={portrait.height}
               radius={portrait.radius}
-              className={portrait.height ? "w-full" : "aspect-[4/5] w-full"}
+              className={
+                portrait.height
+                  ? "w-full bg-subtle"
+                  : "aspect-[4/5] w-full bg-subtle"
+              }
             />
           </div>
           <div className="mt-6 rounded-2xl border border-line bg-card p-5">
