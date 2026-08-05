@@ -19,6 +19,8 @@ const nextConfig = {
       { source: "/post/:slug", destination: "/writings/:slug", permanent: true },
       { source: "/blog", destination: "/writings", permanent: true },
       { source: "/blog/:path*", destination: "/writings", permanent: true },
+      // The public link hub (linktree-style) lives at /qr.
+      { source: "/links", destination: "/qr", permanent: true },
     ];
   },
 };

@@ -83,7 +83,7 @@ export default function LinksAdminPage() {
             Your standalone links page (linktree-style), separate from the main
             site.{" "}
             <a
-              href="/links"
+              href="/qr"
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1 underline-offset-2 hover:underline"
