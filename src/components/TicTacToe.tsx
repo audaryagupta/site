@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-// Tic-Tac-Toe against the computer. You are X (first move); the computer is O
-// and plays a perfect minimax strategy, so the best you can do is force a draw.
+// Tic-Tac-Toe against the computer. You are X (first move); the computer is O.
+// The AI adapts: it gets harder the longer you play, and it will never let
+// anyone win three games in a row — after two straight wins by either side it
+// swings the next game so that streak can't continue.
 
 type Cell = "X" | "O" | "";
 type Board = Cell[];
@@ -51,11 +53,16 @@ function minimax(b: Board, isO: boolean, depth: number): number {
   return best;
 }
 
+function emptyCells(b: Board): number[] {
+  const e: number[] = [];
+  for (let i = 0; i < 9; i++) if (b[i] === "") e.push(i);
+  return e;
+}
+
 function bestMoveForO(b: Board): number {
   let move = -1;
   let bestVal = -Infinity;
-  for (let i = 0; i < 9; i++) {
-    if (b[i] !== "") continue;
+  for (const i of emptyCells(b)) {
     b[i] = "O";
     const val = minimax(b, false, 0);
     b[i] = "";
@@ -67,28 +74,41 @@ function bestMoveForO(b: Board): number {
   return move;
 }
 
-// How often the computer plays the perfect move; the rest of the time it makes
-// a human-like slip (random legal move). Tuned by simulation so a well-played
-// game is winnable roughly half the time, keeping it fun rather than hopeless.
-const SKILL = 0.72;
-
-function chooseMoveForO(b: Board): number {
-  const empties: number[] = [];
-  for (let i = 0; i < 9; i++) if (b[i] === "") empties.push(i);
-  if (empties.length === 0) return -1;
-  if (Math.random() < SKILL) return bestMoveForO(b);
-  return empties[Math.floor(Math.random() * empties.length)];
+function completesLine(b: Board, i: number, player: Cell): boolean {
+  const b2 = b.slice();
+  b2[i] = player;
+  return winnerOf(b2)?.player === player;
 }
+
+// A deliberately-losing move: never complete O's own three, so the computer
+// cannot win this game (used to break its own two-win streak).
+function throwMoveForO(b: Board): number {
+  const empties = emptyCells(b);
+  if (!empties.length) return -1;
+  const safe = empties.filter((i) => !completesLine(b, i, "O"));
+  const pool = safe.length ? safe : empties;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+type Streak = { who: Cell | null; n: number };
 
 export function TicTacToe() {
   const [board, setBoard] = useState<Board>(Array(9).fill(""));
   const [busy, setBusy] = useState(false);
   const [tally, setTally] = useState({ w: 0, l: 0, d: 0 });
+  const [streak, setStreak] = useState<Streak>({ who: null, n: 0 });
+
+  // Refs mirror the streak/games so the move picker reads fresh values without
+  // depending on effect-closure timing.
+  const gamesRef = useRef(0);
+  const streakRef = useRef<Streak>({ who: null, n: 0 });
+  const settledRef = useRef(false);
 
   const win = winnerOf(board);
   const over = Boolean(win) || isFull(board);
 
   const reset = useCallback(() => {
+    settledRef.current = false;
     setBoard(Array(9).fill(""));
     setBusy(false);
   }, []);
@@ -101,6 +121,20 @@ export function TicTacToe() {
     setBusy(true);
   }
 
+  // Pick the computer's move for the current difficulty / streak state.
+  const pickMoveForO = useCallback((b: Board): number => {
+    const empties = emptyCells(b);
+    if (!empties.length) return -1;
+    const s = streakRef.current;
+    // Anti three-in-a-row: after two straight wins by one side, force the swing.
+    if (s.who === "X" && s.n >= 2) return bestMoveForO(b); // perfect → you can't 3-peat
+    if (s.who === "O" && s.n >= 2) return throwMoveForO(b); // throw → house can't 3-peat
+    // Otherwise ramp difficulty with games played (55% → 92% perfect play).
+    const skill = Math.min(0.92, 0.55 + 0.06 * gamesRef.current);
+    if (Math.random() < skill) return bestMoveForO(b);
+    return empties[Math.floor(Math.random() * empties.length)];
+  }, []);
+
   // Computer responds after the player's move.
   useEffect(() => {
     if (winnerOf(board) || isFull(board)) return;
@@ -111,7 +145,7 @@ export function TicTacToe() {
       return;
     }
     const t = setTimeout(() => {
-      const move = chooseMoveForO(board.slice());
+      const move = pickMoveForO(board.slice());
       if (move >= 0) {
         setBoard((prev) => {
           if (prev[move] !== "" || winnerOf(prev) || isFull(prev)) return prev;
@@ -123,30 +157,62 @@ export function TicTacToe() {
       setBusy(false);
     }, 320);
     return () => clearTimeout(t);
-  }, [board]);
+  }, [board, pickMoveForO]);
 
-  // Update the running tally once, when a game ends.
+  // Record the result once, when a game ends: tally, games played, streak.
   useEffect(() => {
-    const w = winnerOf(board);
-    if (w) {
-      setTally((t) =>
-        w.player === "X" ? { ...t, w: t.w + 1 } : { ...t, l: t.l + 1 }
-      );
-    } else if (isFull(board)) {
-      setTally((t) => ({ ...t, d: t.d + 1 }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [over]);
+    if (!over || settledRef.current) return;
+    settledRef.current = true;
 
-  const status = win
-    ? win.player === "X"
-      ? "You win! Nicely played."
-      : "Computer wins — go again?"
+    const w = winnerOf(board);
+    const result: Cell | "D" = w ? (w.player as Cell) : "D";
+
+    setTally((t) =>
+      result === "X"
+        ? { ...t, w: t.w + 1 }
+        : result === "O"
+          ? { ...t, l: t.l + 1 }
+          : { ...t, d: t.d + 1 }
+    );
+
+    gamesRef.current += 1;
+
+    const prev = streakRef.current;
+    const next: Streak =
+      result === "D"
+        ? { who: null, n: 0 }
+        : prev.who === result
+          ? { who: result, n: prev.n + 1 }
+          : { who: result, n: 1 };
+    streakRef.current = next;
+    setStreak(next);
+  }, [over, board]);
+
+  const outcome: "X" | "O" | "D" | null = win
+    ? (win.player as "X" | "O")
     : isFull(board)
-      ? "A draw — well played."
-      : busy
-        ? "Computer is thinking…"
-        : "Your move — you're X.";
+      ? "D"
+      : null;
+
+  const bannerTitle =
+    outcome === "X"
+      ? "You win!"
+      : outcome === "O"
+        ? "Computer wins"
+        : "It's a draw";
+
+  const bannerSub =
+    outcome === "X"
+      ? streak.who === "X" && streak.n >= 2
+        ? "Two in a row — the house won't let that happen again."
+        : "Nicely played."
+      : outcome === "O"
+        ? streak.who === "O" && streak.n >= 2
+          ? "Two straight for the house — it'll ease off next game."
+          : "Better luck next round."
+        : "Evenly matched.";
+
+  const statusLine = busy ? "Computer is thinking…" : "Your move — you're X.";
 
   return (
     <div className="w-full">
@@ -155,7 +221,7 @@ export function TicTacToe() {
         <span>Draw {tally.d}</span>
         <span>Computer {tally.l}</span>
       </div>
-      <div className="rounded-xl border border-line bg-card p-4">
+      <div className="relative rounded-xl border border-line bg-card p-4">
         <div className="mx-auto grid max-w-[280px] grid-cols-3 gap-2">
           {board.map((c, i) => {
             const winning = win?.line.includes(i);
@@ -179,15 +245,42 @@ export function TicTacToe() {
           })}
         </div>
         <div className="mt-4 flex items-center justify-between gap-3">
-          <p className="text-sm text-muted">{status}</p>
+          <p className="text-sm text-muted">{statusLine}</p>
           <button
             type="button"
             onClick={reset}
             className="flex-none rounded-md border border-line px-3 py-1.5 text-sm hover:bg-subtle"
           >
-            {over ? "Play again" : "Restart"}
+            Restart
           </button>
         </div>
+
+        {over && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-black/25 px-4 text-center backdrop-blur-[1px]">
+            <div className="flex w-full max-w-[16rem] flex-col items-center gap-2.5 rounded-2xl border border-line bg-background px-6 py-6 shadow-2xl">
+              <span
+                className={
+                  "inline-flex h-12 w-12 items-center justify-center rounded-full border-2 font-display text-xl font-semibold " +
+                  (outcome === "X"
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-line text-foreground")
+                }
+                aria-hidden
+              >
+                {outcome === "X" ? "★" : outcome === "O" ? "O" : "="}
+              </span>
+              <p className="font-display text-2xl font-semibold">{bannerTitle}</p>
+              <p className="text-sm text-muted">{bannerSub}</p>
+              <button
+                type="button"
+                onClick={reset}
+                className="mt-1 rounded-md bg-foreground px-5 py-2 text-sm font-medium text-background hover:opacity-90"
+              >
+                Play again
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
