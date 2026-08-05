@@ -5,6 +5,7 @@ import { SocialIcons } from "./SocialIcons";
 import { SubscribeForm } from "./SubscribeForm";
 import { EasterEggs } from "./EasterEggs";
 import { Logo } from "./Logo";
+import { StudioEntry } from "./StudioEntry";
 
 export function SiteFooter() {
   return (
@@ -74,6 +75,7 @@ export function SiteFooter() {
             >
               {site.email}
             </a>
+            <StudioEntry />
           </div>
         </Container>
       </div>
