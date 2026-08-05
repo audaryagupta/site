@@ -19,6 +19,10 @@ interface PV {
   source: string;
   device: string;
   isNewVisitor: boolean;
+  country: string;
+  countryCode: string;
+  region: string;
+  city: string;
   createdAt: Date;
 }
 
@@ -41,6 +45,10 @@ export async function GET(req: Request) {
       source: true,
       device: true,
       isNewVisitor: true,
+      country: true,
+      countryCode: true,
+      region: true,
+      city: true,
       createdAt: true,
     },
     orderBy: { createdAt: "asc" },
@@ -100,8 +108,34 @@ export async function GET(req: Request) {
     (r) => r.referrerHost
   ).slice(0, 12);
 
+  // Geography — distinct sessions per country / city.
+  const countries = groupSessionsMeta(
+    rows,
+    (r) => r.country || "Unknown",
+    (r) => ({ code: r.countryCode })
+  ).slice(0, 12);
+  const cities = groupSessionsMeta(
+    rows.filter((r) => r.city),
+    (r) => r.city,
+    (r) => ({ code: r.countryCode, country: r.country, region: r.region })
+  ).slice(0, 12);
+
+  // Average sessions by weekday (IST), Sun..Sat.
+  const byDayOfWeek = weekdayAverages(bySession, days);
+
   // Monthly trend for the last 12 months (independent of the selected range).
   const monthly = await monthlyTrend();
+
+  // Sessions over time — daily for <=90 days, monthly for the 12-month range.
+  const series =
+    days <= 90
+      ? dailySeries(rows, bySession, days)
+      : monthly.map((m) => ({
+          label: m.label,
+          date: m.month,
+          sessions: m.sessions,
+          pageviews: m.pageviews,
+        }));
 
   return NextResponse.json({
     range: days,
@@ -123,6 +157,10 @@ export async function GET(req: Request) {
     devices: deviceSessions,
     topPages,
     topReferrers,
+    countries,
+    cities,
+    series,
+    byDayOfWeek,
     monthly,
   });
 }
@@ -147,6 +185,109 @@ function groupSessions(
   return Array.from(map.entries())
     .map(([key, set]) => ({ key, sessions: set.size }))
     .sort((a, b) => b.sessions - a.sessions);
+}
+
+// Distinct sessions per key, carrying extra metadata (country code, etc.)
+// taken from the first row seen for that key.
+function groupSessionsMeta(
+  rows: PV[],
+  keyFn: (r: PV) => string,
+  metaFn: (r: PV) => Record<string, string | undefined>
+): { key: string; sessions: number; meta: Record<string, string | undefined> }[] {
+  const map = new Map<
+    string,
+    { set: Set<string>; meta: Record<string, string | undefined> }
+  >();
+  for (const r of rows) {
+    const k = keyFn(r);
+    if (!map.has(k)) map.set(k, { set: new Set(), meta: metaFn(r) });
+    map.get(k)!.set.add(r.sessionId);
+  }
+  return Array.from(map.entries())
+    .map(([key, v]) => ({ key, sessions: v.set.size, meta: v.meta }))
+    .sort((a, b) => b.sessions - a.sessions);
+}
+
+// IST day key (YYYY-MM-DD) for a timestamp.
+const dayKeyFmt = new Intl.DateTimeFormat("en-CA", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  timeZone: "Asia/Kolkata",
+});
+const dayLabelFmt = new Intl.DateTimeFormat("en-IN", {
+  day: "2-digit",
+  month: "short",
+  timeZone: "Asia/Kolkata",
+});
+
+// Sessions & page views per IST day across the selected window.
+function dailySeries(
+  rows: PV[],
+  bySession: Map<string, { first: number; last: number; count: number }>,
+  days: number
+): { label: string; date: string; sessions: number; pageviews: number }[] {
+  const buckets = new Map<
+    string,
+    { label: string; sessions: number; pageviews: number }
+  >();
+  const cursor = new Date(Date.now() - (days - 1) * 24 * 60 * 60 * 1000);
+  for (let i = 0; i < days; i++) {
+    const key = dayKeyFmt.format(cursor);
+    buckets.set(key, { label: dayLabelFmt.format(cursor), sessions: 0, pageviews: 0 });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  // Page views by day.
+  for (const r of rows) {
+    const b = buckets.get(dayKeyFmt.format(r.createdAt));
+    if (b) b.pageviews += 1;
+  }
+  // Sessions counted on the day they started.
+  Array.from(bySession.values()).forEach((s) => {
+    const b = buckets.get(dayKeyFmt.format(new Date(s.first)));
+    if (b) b.sessions += 1;
+  });
+  return Array.from(buckets.entries()).map(([date, b]) => ({
+    date,
+    label: b.label,
+    sessions: b.sessions,
+    pageviews: b.pageviews,
+  }));
+}
+
+const weekdayFmt = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  timeZone: "Asia/Kolkata",
+});
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+// Average sessions per weekday across the window (total sessions on that
+// weekday / number of that weekday's dates in the window).
+function weekdayAverages(
+  bySession: Map<string, { first: number; last: number; count: number }>,
+  days: number
+): { day: string; avg: number; total: number }[] {
+  const totals: Record<string, number> = {};
+  const occurrences: Record<string, number> = {};
+  for (const d of WEEKDAYS) {
+    totals[d] = 0;
+    occurrences[d] = 0;
+  }
+  const cursor = new Date(Date.now() - (days - 1) * 24 * 60 * 60 * 1000);
+  for (let i = 0; i < days; i++) {
+    occurrences[weekdayFmt.format(cursor)] += 1;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  Array.from(bySession.values()).forEach((s) => {
+    totals[weekdayFmt.format(new Date(s.first))] += 1;
+  });
+  return WEEKDAYS.map((day) => ({
+    day,
+    total: totals[day],
+    avg: occurrences[day]
+      ? Math.round((totals[day] / occurrences[day]) * 10) / 10
+      : 0,
+  }));
 }
 
 function topBy(

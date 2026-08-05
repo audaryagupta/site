@@ -36,12 +36,20 @@ export function VisitTracker() {
         sessionStorage.setItem("bya_sid", sid);
       }
 
+      let tz = "";
+      try {
+        tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      } catch {
+        /* ignore */
+      }
+
       const payload = {
         vid,
         sid,
         newSession,
         path: pathname,
         referrer: document.referrer || "",
+        tz,
       };
       const url = "/api/track";
       const bodyStr = JSON.stringify(payload);

@@ -233,6 +233,11 @@ model PageView {
   source       String   @default("direct") // organic | direct | social | referral | internal
   device       String   @default("desktop") // mobile | tablet | desktop
   isNewVisitor Boolean  @default(false)
+  // Coarse geolocation derived from IP (we never store the IP itself).
+  country      String   @default("")
+  countryCode  String   @default("")
+  region       String   @default("")
+  city         String   @default("")
   createdAt    DateTime @default(now())
 
   visitor      Visitor  @relation(fields: [visitorId], references: [id], onDelete: Cascade)

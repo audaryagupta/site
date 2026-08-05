@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { clientIpFrom, geoFromTimezone, lookupGeo, type Geo } from "@/lib/geo";
 
 export const runtime = "nodejs";
 
@@ -84,6 +85,10 @@ export async function POST(req: Request) {
     const source = classifySource(referrerHost, ownHost);
     const device = classifyDevice(ua);
 
+    const tz = String(body.tz || "").slice(0, 64);
+    let geo: Geo = await lookupGeo(clientIpFrom(req.headers));
+    if (!geo.country && tz) geo = geoFromTimezone(tz);
+
     // Upsert the visitor. If they didn't exist, this is a brand-new visitor.
     const existing = await prisma.visitor.findUnique({
       where: { id: visitorId },
@@ -114,6 +119,10 @@ export async function POST(req: Request) {
         source,
         device,
         isNewVisitor,
+        country: geo.country,
+        countryCode: geo.countryCode,
+        region: geo.region,
+        city: geo.city,
       },
     });
 

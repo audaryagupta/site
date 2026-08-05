@@ -30,6 +30,14 @@ export default function PrivacyPage() {
           activity logs, and improve the site.
         </p>
         <p>
+          To understand how the site is used, we keep first-party, aggregate
+          analytics — pages viewed, visit counts, approximate visit duration,
+          device type, referring source and a coarse location (country, region
+          and city) derived from your IP address. We do not store your IP
+          address itself, and we do not use third-party advertising trackers or
+          build profiles to identify you personally.
+        </p>
+        <p>
           The site may use trusted third-party services such as Google, Fly.io,
           email providers, analytics, CAPTCHA/security providers and AI/news
           services where necessary to operate these features. Information is not

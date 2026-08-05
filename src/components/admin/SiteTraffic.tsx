@@ -37,6 +37,22 @@ interface MonthRow {
   sessions: number;
   newVisitors: number;
 }
+interface GeoRow {
+  key: string;
+  sessions: number;
+  meta: { code?: string; country?: string; region?: string };
+}
+interface SeriesPoint {
+  label: string;
+  date: string;
+  sessions: number;
+  pageviews: number;
+}
+interface DayRow {
+  day: string;
+  avg: number;
+  total: number;
+}
 interface Data {
   range: number;
   summary: Summary;
@@ -44,7 +60,22 @@ interface Data {
   devices: KeyCount[];
   topPages: KeyViews[];
   topReferrers: KeyViews[];
+  countries: GeoRow[];
+  cities: GeoRow[];
+  series: SeriesPoint[];
+  byDayOfWeek: DayRow[];
   monthly: MonthRow[];
+}
+
+// Turn an ISO country code (e.g. "IN") into its flag emoji.
+function flag(code?: string): string {
+  if (!code || code.length !== 2) return "";
+  const A = 0x1f1e6;
+  const base = "A".charCodeAt(0);
+  return String.fromCodePoint(
+    A + (code.toUpperCase().charCodeAt(0) - base),
+    A + (code.toUpperCase().charCodeAt(1) - base)
+  );
 }
 
 const fmt = (n: number) => new Intl.NumberFormat("en-IN").format(n);
@@ -141,6 +172,72 @@ export function SiteTraffic() {
             <Stat icon={<Activity size={15} />} label="Bounce rate" value={`${s.bounceRate}%`} sub="single-page visits" />
           </div>
 
+          {/* Sessions over time */}
+          <div className="mt-6 rounded-lg border border-line bg-card p-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Sessions over time</h3>
+              <span className="text-xs text-muted">
+                {data!.range <= 90 ? "daily" : "monthly"} · visits
+              </span>
+            </div>
+            <TrendChart points={data!.series} />
+          </div>
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-3">
+            {/* New vs returning donut */}
+            <Donut
+              title="New vs returning"
+              icon={<Repeat size={15} />}
+              center={fmt(s.uniqueVisitors)}
+              centerLabel="visitors"
+              segments={[
+                { label: "New", value: s.newVisitors },
+                { label: "Returning", value: s.repeatVisitors },
+              ]}
+            />
+            {/* Devices donut */}
+            <Donut
+              title="Sessions by device"
+              icon={<MonitorSmartphone size={15} />}
+              center={fmt(s.sessions)}
+              centerLabel="visits"
+              segments={data!.devices.map((d) => ({
+                label: d.key.charAt(0).toUpperCase() + d.key.slice(1),
+                value: d.sessions,
+              }))}
+            />
+            {/* Avg sessions by weekday */}
+            <div className="rounded-lg border border-line bg-card p-5">
+              <h3 className="text-sm font-semibold">Avg. sessions by day</h3>
+              <p className="text-xs text-muted">visits per weekday (IST)</p>
+              <WeekdayChart rows={data!.byDayOfWeek} />
+            </div>
+          </div>
+
+          {/* Geography */}
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            <Breakdown
+              title="Sessions by country"
+              icon={<Globe size={15} />}
+              rows={data!.countries.map((c) => ({
+                label: `${flag(c.meta.code)} ${c.key}`.trim(),
+                value: c.sessions,
+              }))}
+              unit="visits"
+            />
+            <TopList
+              title="Top cities"
+              rows={data!.cities.map((c) => ({
+                label: `${flag(c.meta.code)} ${c.key}${
+                  c.meta.region ? `, ${c.meta.region}` : ""
+                }`.trim(),
+                value: c.sessions,
+              }))}
+              empty="No city-level data yet — locations resolve as visitors arrive."
+              unit="visits"
+            />
+          </div>
+
           {/* Monthly trend */}
           <div className="mt-6 rounded-lg border border-line bg-card p-5">
             <h3 className="text-sm font-semibold">Visitors by month</h3>
@@ -197,6 +294,185 @@ export function SiteTraffic() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// Smooth-ish area+line chart of sessions over time.
+function TrendChart({ points }: { points: SeriesPoint[] }) {
+  const W = 720;
+  const H = 180;
+  const padX = 8;
+  const padY = 16;
+  const max = Math.max(1, ...points.map((p) => p.sessions));
+  const n = points.length;
+  const stepX = n > 1 ? (W - padX * 2) / (n - 1) : 0;
+  const x = (i: number) => padX + i * stepX;
+  const y = (v: number) => H - padY - (v / max) * (H - padY * 2);
+
+  const line = points.map((p, i) => `${x(i)},${y(p.sessions)}`).join(" ");
+  const area =
+    `${padX},${H - padY} ` +
+    points.map((p, i) => `${x(i)},${y(p.sessions)}`).join(" ") +
+    ` ${x(n - 1)},${H - padY}`;
+
+  // A handful of evenly spaced x-axis labels.
+  const labelEvery = Math.max(1, Math.ceil(n / 8));
+
+  if (!n) return <p className="mt-4 text-xs text-muted">No data yet.</p>;
+
+  return (
+    <div className="mt-4">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full"
+        preserveAspectRatio="none"
+        role="img"
+        aria-label="Sessions over time"
+      >
+        <defs>
+          <linearGradient id="traffic-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="currentColor" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <polygon points={area} fill="url(#traffic-fill)" className="text-foreground" />
+        <polyline
+          points={line}
+          fill="none"
+          className="text-foreground"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
+        />
+        {points.map((p, i) => (
+          <circle
+            key={p.date}
+            cx={x(i)}
+            cy={y(p.sessions)}
+            r={n <= 31 ? 2.5 : 0}
+            className="text-foreground"
+            fill="currentColor"
+          >
+            <title>{`${p.label}: ${fmt(p.sessions)} visits · ${fmt(p.pageviews)} views`}</title>
+          </circle>
+        ))}
+      </svg>
+      <div className="mt-1 flex justify-between text-[10px] text-muted">
+        {points
+          .filter((_, i) => i % labelEvery === 0 || i === n - 1)
+          .map((p) => (
+            <span key={p.date}>{p.label}</span>
+          ))}
+      </div>
+    </div>
+  );
+}
+
+const DONUT_COLORS = [
+  { stroke: "text-foreground", swatch: "bg-foreground" },
+  { stroke: "text-foreground/55", swatch: "bg-foreground/55" },
+  { stroke: "text-foreground/30", swatch: "bg-foreground/30" },
+  { stroke: "text-foreground/15", swatch: "bg-foreground/15" },
+];
+
+function Donut({
+  title,
+  icon,
+  center,
+  centerLabel,
+  segments,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  center: string;
+  centerLabel: string;
+  segments: { label: string; value: number }[];
+}) {
+  const total = segments.reduce((s, x) => s + x.value, 0) || 1;
+  const R = 42;
+  const C = 2 * Math.PI * R;
+  let offset = 0;
+  const arcs = segments.map((seg, i) => {
+    const frac = seg.value / total;
+    const dash = frac * C;
+    const el = {
+      key: seg.label,
+      dash,
+      gap: C - dash,
+      off: -offset,
+      color: DONUT_COLORS[i % DONUT_COLORS.length].stroke,
+    };
+    offset += dash;
+    return el;
+  });
+
+  return (
+    <div className="rounded-lg border border-line bg-card p-5">
+      <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+        {icon} {title}
+      </h3>
+      <div className="mt-3 flex items-center gap-4">
+        <div className="relative h-28 w-28 flex-none">
+          <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+            <circle cx="50" cy="50" r={R} fill="none" className="text-subtle" stroke="currentColor" strokeWidth="12" />
+            {arcs.map((a) => (
+              <circle
+                key={a.key}
+                cx="50"
+                cy="50"
+                r={R}
+                fill="none"
+                className={a.color}
+                stroke="currentColor"
+                strokeWidth="12"
+                strokeDasharray={`${a.dash} ${a.gap}`}
+                strokeDashoffset={a.off}
+              />
+            ))}
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-lg font-semibold leading-none">{center}</span>
+            <span className="text-[10px] text-muted">{centerLabel}</span>
+          </div>
+        </div>
+        <div className="min-w-0 flex-1 space-y-1.5">
+          {segments.map((seg, i) => (
+            <div key={seg.label} className="flex items-center gap-2 text-xs">
+              <span
+                className={
+                  "inline-block h-2.5 w-2.5 flex-none rounded-sm " +
+                  DONUT_COLORS[i % DONUT_COLORS.length].swatch
+                }
+              />
+              <span className="truncate">{seg.label}</span>
+              <span className="ml-auto flex-none text-muted">
+                {fmt(seg.value)} · {Math.round((seg.value / total) * 100)}%
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WeekdayChart({ rows }: { rows: DayRow[] }) {
+  const max = Math.max(1, ...rows.map((r) => r.avg));
+  return (
+    <div className="mt-5 flex h-32 items-end gap-1.5">
+      {rows.map((r) => (
+        <div key={r.day} className="flex flex-1 flex-col items-center gap-1">
+          <div
+            className="w-full rounded-t bg-foreground/80 transition-all"
+            style={{ height: `${(r.avg / max) * 100}%`, minHeight: r.avg ? 3 : 0 }}
+            title={`${r.day}: ${r.avg} avg visits/day · ${fmt(r.total)} total`}
+          />
+          <span className="text-[10px] text-muted">{r.day[0]}</span>
+        </div>
+      ))}
     </div>
   );
 }
