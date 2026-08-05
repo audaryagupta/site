@@ -150,3 +150,15 @@ body {
 .animate-fade-up {
   animation: fade-up 0.35s ease both;
 }
+
+/* In-page "Edit site" mode affordances (owner only). */
+body.site-editing .site-edit-target {
+  outline: 1px dashed rgba(122, 88, 54, 0.55);
+  outline-offset: 3px;
+  border-radius: 3px;
+  transition: outline-color 0.15s ease, background-color 0.15s ease;
+}
+body.site-editing .site-edit-target:hover {
+  outline-color: rgba(122, 88, 54, 0.95);
+  background-color: rgba(122, 88, 54, 0.06);
+}

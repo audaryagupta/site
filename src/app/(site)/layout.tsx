@@ -4,6 +4,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ComingSoon } from "@/components/ComingSoon";
 import { VisitTracker } from "@/components/VisitTracker";
+import { SiteEditorBar } from "@/components/site-editor/SiteEditorBar";
 import { getSettings } from "@/lib/queries";
 
 // Pre-launch, the primary production domain shows a teaser until you "Go live"
@@ -36,6 +37,7 @@ export default async function SiteLayout({
       <SiteHeader />
       <main className="flex-1">{children}</main>
       <SiteFooter />
+      <SiteEditorBar />
     </div>
   );
 }

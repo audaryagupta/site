@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Container } from "@/components/Container";
 import { SocialIcons } from "@/components/SocialIcons";
+import { EditableText } from "@/components/site-editor/EditableText";
+import { EditableImage } from "@/components/site-editor/EditableImage";
 import { getSettings } from "@/lib/queries";
+import { getSiteContent, pickText, pickImage } from "@/lib/siteContent";
 
 export const revalidate = 60;
 
@@ -31,21 +34,34 @@ export default async function AboutPage() {
     "about_role",
     "about_image",
   ]);
-  const bio = settings.about_bio || DEFAULT_BIO;
-  const title = settings.about_title || "Audarya Gupta";
-  const role = settings.about_role || "Founder, byAudarya & VentureBuz";
-  const portrait = settings.about_image || "/audarya/audarya-portrait-blue.jpg";
+  const content = await getSiteContent();
+  const bio = pickText(content, "about.bio", settings.about_bio || DEFAULT_BIO);
+  const title = pickText(content, "about.title", settings.about_title || "Audarya Gupta");
+  const role = pickText(
+    content,
+    "about.role",
+    settings.about_role || "Founder, byAudarya & VentureBuz"
+  );
+  const portrait = pickImage(content, "about.image", {
+    src: settings.about_image || "/audarya/audarya-portrait-blue.jpg",
+    radius: 24,
+  });
 
   return (
     <Container className="py-16 lg:py-20">
       <div className="grid gap-12 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
         <aside className="lg:sticky lg:top-24">
-          <div className="overflow-hidden rounded-[1.5rem] border border-line bg-card shadow-xl shadow-foreground/5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={portrait}
-              alt={title}
-              className="aspect-[4/5] w-full object-cover"
+          <div className="rounded-[1.5rem] border border-line bg-card shadow-xl shadow-foreground/5">
+            <EditableImage
+              id="about.image"
+              src={portrait.src}
+              alt={title.text}
+              fit={portrait.fit}
+              posX={portrait.posX}
+              posY={portrait.posY}
+              height={portrait.height}
+              radius={portrait.radius}
+              className={portrait.height ? "w-full" : "aspect-[4/5] w-full"}
             />
           </div>
           <div className="mt-6 rounded-2xl border border-line bg-card p-5">
@@ -66,10 +82,20 @@ export default async function AboutPage() {
           <p className="text-xs uppercase tracking-[0.25em] text-muted">
             About Me
           </p>
-          <h1 className="mt-4 max-w-3xl font-display text-5xl font-semibold leading-tight tracking-tight md:text-6xl">
-            {title}
-          </h1>
-          <p className="mt-3 font-serif text-xl italic text-muted">{role}</p>
+          <EditableText
+            id="about.title"
+            as="h1"
+            text={title.text}
+            scale={title.scale}
+            className="mt-4 max-w-3xl font-display text-5xl font-semibold leading-tight tracking-tight md:text-6xl"
+          />
+          <EditableText
+            id="about.role"
+            as="p"
+            text={role.text}
+            scale={role.scale}
+            className="mt-3 font-serif text-xl italic text-muted"
+          />
 
           <div className="mt-8 grid gap-3 sm:grid-cols-3">
             {themes.map(([label, copy]) => (
@@ -80,11 +106,14 @@ export default async function AboutPage() {
             ))}
           </div>
 
-          <div className="mt-10 space-y-5 font-serif text-lg leading-relaxed">
-            {bio.split("\n\n").map((para, i) => (
-              <p key={i}>{para}</p>
-            ))}
-          </div>
+          <EditableText
+            id="about.bio"
+            as="div"
+            multiline
+            text={bio.text}
+            scale={bio.scale}
+            className="mt-10 font-serif text-lg leading-relaxed"
+          />
         </main>
       </div>
     </Container>

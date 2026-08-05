@@ -3,7 +3,10 @@ import { ArrowRight, PenLine } from "lucide-react";
 import { Container } from "@/components/Container";
 import { SubscribeForm } from "@/components/SubscribeForm";
 import { LogoMark } from "@/components/Logo";
+import { EditableText } from "@/components/site-editor/EditableText";
+import { EditableButton } from "@/components/site-editor/EditableButton";
 import { getPublishedArticles, getUsedTopics } from "@/lib/queries";
+import { getSiteContent, pickText, pickButton } from "@/lib/siteContent";
 import { formatDate } from "@/lib/utils";
 
 export const revalidate = 60;
@@ -21,6 +24,19 @@ export default async function HomePage() {
   const articles = await getPublishedArticles({ take: 7 });
   const topics = await getUsedTopics();
   const [lead, ...rest] = articles;
+  const content = await getSiteContent();
+
+  const heroEyebrow = pickText(content, "home.hero.eyebrow", "The personal blog of Audarya Gupta");
+  const heroTitle = pickText(content, "home.hero.title", "Ideas worth passing on.");
+  const heroSub = pickText(
+    content,
+    "home.hero.sub",
+    "Essays, field notes and curated briefings on finance, history, public life, technology and the questions that keep returning."
+  );
+  const heroPrimary = pickButton(content, "home.hero.primary", "Read the writings", "/writings");
+  const heroSecondary = pickButton(content, "home.hero.secondary", "Get the Weekly Recap", "/newsletter");
+  const quoteText = pickText(content, "home.quote.text", "“Any idea that leaves you becomes twice as useful.”");
+  const quoteSub = pickText(content, "home.quote.sub", "Notes on economics, ambition and attention");
 
   return (
     <>
@@ -28,33 +44,45 @@ export default async function HomePage() {
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_10%,rgba(122,88,54,0.13),transparent_30%),linear-gradient(180deg,var(--background),var(--subtle))]" />
         <Container className="grid min-h-[74vh] gap-12 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:py-24">
           <div className="animate-fade-up">
-            <p className="mb-5 text-xs uppercase tracking-[0.25em] text-muted">
-              The personal blog of Audarya Gupta
-            </p>
-            <h1 className="max-w-4xl font-display text-5xl font-semibold leading-[0.96] tracking-tight sm:text-6xl md:text-7xl">
-              Ideas worth passing on.
-            </h1>
-            <p className="mt-6 max-w-2xl font-serif text-xl leading-relaxed text-muted">
-              Essays, field notes and curated briefings on finance, history,
-              public life, technology and the questions that keep returning.
-            </p>
+            <EditableText
+              id="home.hero.eyebrow"
+              as="p"
+              text={heroEyebrow.text}
+              scale={heroEyebrow.scale}
+              className="mb-5 text-xs uppercase tracking-[0.25em] text-muted"
+            />
+            <EditableText
+              id="home.hero.title"
+              as="h1"
+              text={heroTitle.text}
+              scale={heroTitle.scale}
+              className="max-w-4xl font-display text-5xl font-semibold leading-[0.96] tracking-tight sm:text-6xl md:text-7xl"
+            />
+            <EditableText
+              id="home.hero.sub"
+              as="p"
+              text={heroSub.text}
+              scale={heroSub.scale}
+              className="mt-6 max-w-2xl font-serif text-xl leading-relaxed text-muted"
+            />
             <div className="mt-8 flex flex-wrap items-center gap-4">
-              <Link
-                href="/writings"
+              <EditableButton
+                id="home.hero.primary"
+                label={heroPrimary.label}
+                href={heroPrimary.href}
                 className="group inline-flex items-center gap-2 rounded-md bg-foreground px-6 py-3 text-sm font-medium text-background transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-foreground/10"
               >
-                Read the writings
                 <ArrowRight
                   size={16}
                   className="transition-transform group-hover:translate-x-0.5"
                 />
-              </Link>
-              <Link
-                href="/newsletter"
+              </EditableButton>
+              <EditableButton
+                id="home.hero.secondary"
+                label={heroSecondary.label}
+                href={heroSecondary.href}
                 className="link-underline text-sm text-muted hover:text-foreground"
-              >
-                Get the Weekly Recap
-              </Link>
+              />
             </div>
           </div>
 
@@ -65,12 +93,20 @@ export default async function HomePage() {
                 <PenLine size={18} className="text-muted" />
               </div>
               <div className="py-8">
-                <p className="font-serif text-4xl leading-tight md:text-5xl">
-                  “Any idea that leaves you becomes twice as useful.”
-                </p>
-                <p className="mt-5 text-sm uppercase tracking-[0.22em] text-muted">
-                  Notes on economics, ambition and attention
-                </p>
+                <EditableText
+                  id="home.quote.text"
+                  as="p"
+                  text={quoteText.text}
+                  scale={quoteText.scale}
+                  className="font-serif text-4xl leading-tight md:text-5xl"
+                />
+                <EditableText
+                  id="home.quote.sub"
+                  as="p"
+                  text={quoteSub.text}
+                  scale={quoteSub.scale}
+                  className="mt-5 text-sm uppercase tracking-[0.22em] text-muted"
+                />
               </div>
               <div className="grid grid-cols-2 gap-3 border-t border-line pt-5 sm:grid-cols-3">
                 {notes.map((n) => (

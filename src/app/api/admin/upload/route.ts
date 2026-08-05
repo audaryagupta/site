@@ -10,6 +10,7 @@ const MAX_BYTES = 60 * 1024 * 1024; // 60 MB (audio narrations can be long)
 const KIND_EXT: Record<string, string[]> = {
   audio: [".mp3", ".m4a", ".aac", ".ogg", ".oga", ".wav", ".webm"],
   icon: [".png", ".jpg", ".jpeg", ".svg", ".webp", ".gif", ".ico"],
+  image: [".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"],
 };
 
 export async function POST(req: Request) {
