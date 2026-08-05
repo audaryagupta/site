@@ -31,6 +31,7 @@ export default async function EditArticlePage({
     featured: article.featured,
     seoTitle: article.seoTitle || "",
     seoDescription: article.seoDescription || "",
+    audioUrl: article.audioUrl || "",
     publishedAt: article.publishedAt
       ? new Intl.DateTimeFormat("en-CA", {
           timeZone: "Asia/Kolkata",

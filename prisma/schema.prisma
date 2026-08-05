@@ -23,6 +23,7 @@ model Article {
   seoTitle        String?
   seoDescription  String?
   readingMinutes  Int       @default(1)
+  audioUrl        String?                  // optional narration read by Audarya
   views           Int       @default(0)   // real, tracked views
   likes           Int       @default(0)   // real, tracked likes
   viewsBoost      Int       @default(0)   // added to the PUBLIC view count only
@@ -234,6 +235,52 @@ model PageView {
   @@index([createdAt])
   @@index([sessionId])
   @@index([visitorId])
+}
+
+// A public "link hub" (linktree-style) entry shown on the standalone /links
+// page. `icon` is a known key (see LINK_ICONS) or an uploaded image URL.
+model LinkItem {
+  id        String   @id @default(cuid())
+  label     String
+  url       String
+  icon      String   @default("link")   // known icon key OR uploaded image url
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([order])
+}
+
+// Personal goals shown only in the Studio dashboard. `horizon` separates
+// short-term from long-term; toggled done/undone by the owner.
+model Goal {
+  id          String   @id @default(cuid())
+  title       String
+  detail      String   @default("")
+  horizon     String   @default("short") // short | long
+  done        Boolean  @default(false)
+  order       Int      @default(0)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([horizon])
+}
+
+// Private "My Bookshelf" — books logged as Audarya reads them.
+model Book {
+  id        String   @id @default(cuid())
+  title     String
+  author    String   @default("")
+  status    String   @default("reading") // want | reading | finished
+  rating    Int      @default(0)         // 0–5, optional
+  notes     String   @default("")
+  coverUrl  String?
+  startedAt DateTime?
+  finishedAt DateTime?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([status])
 }
 
 // System log of major actions (article published, contact added, appointment

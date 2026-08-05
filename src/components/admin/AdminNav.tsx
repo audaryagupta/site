@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
   BarChart3,
+  BookOpen,
   CalendarClock,
   CalendarDays,
   CalendarRange,
@@ -12,6 +13,7 @@ import {
   Gamepad2,
   Gift,
   LayoutDashboard,
+  Link2,
   LogOut,
   Mail,
   PenLine,
@@ -19,6 +21,7 @@ import {
   ScrollText,
   Settings,
   Sparkles,
+  Target,
   UserCog,
   Users,
 } from "lucide-react";
@@ -46,6 +49,9 @@ const links: NavLink[] = [
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/admin/letterhead", label: "Letterhead", icon: FileSignature },
   { href: "/admin/games", label: "Games", icon: Gamepad2 },
+  { href: "/admin/links", label: "Link hub", icon: Link2 },
+  { href: "/admin/goals", label: "Goals", icon: Target, ownerOnly: true },
+  { href: "/admin/bookshelf", label: "My Bookshelf", icon: BookOpen, ownerOnly: true },
   { href: "/admin/logs", label: "Activity log", icon: ScrollText },
   { href: "/admin/now", label: "Now page", icon: Sparkles },
   { href: "/admin/access", label: "Access", icon: UserCog, ownerOnly: true },

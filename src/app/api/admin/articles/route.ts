@@ -62,6 +62,7 @@ export async function POST(req: Request) {
       featured: Boolean(body.featured),
       seoTitle: body.seoTitle || null,
       seoDescription: body.seoDescription || null,
+      audioUrl: body.audioUrl || null,
       readingMinutes: estimateReadingMinutes(contentHtml),
       publishedAt: status === "published" ? new Date() : null,
       tags: { connectOrCreate: tags },

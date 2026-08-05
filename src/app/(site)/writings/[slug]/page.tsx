@@ -5,6 +5,7 @@ import { Container } from "@/components/Container";
 import { ArticleBody } from "@/components/ArticleBody";
 import { ShareButtons } from "@/components/ShareButtons";
 import { ArticleEngagement } from "@/components/ArticleEngagement";
+import { ArticleAudio } from "@/components/ArticleAudio";
 import { ArticleCard } from "@/components/ArticleCard";
 import { Comments } from "@/components/Comments";
 import { getArticleBySlug, getRelatedArticles } from "@/lib/queries";
@@ -76,6 +77,7 @@ export default async function ArticlePage({
             likes={article.likes + article.likesBoost}
           />
         </div>
+        {article.audioUrl && <ArticleAudio src={article.audioUrl} />}
       </Container>
 
       {/* Cover */}

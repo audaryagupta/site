@@ -85,6 +85,10 @@ export async function PATCH(
       body.featured !== undefined ? Boolean(body.featured) : current.featured,
     seoTitle: body.seoTitle ?? current.seoTitle,
     seoDescription: body.seoDescription ?? current.seoDescription,
+    audioUrl:
+      body.audioUrl !== undefined
+        ? body.audioUrl || null
+        : current.audioUrl,
     readingMinutes: estimateReadingMinutes(contentHtml),
     publishedAt: (() => {
       if (body.publishedAt !== undefined) {

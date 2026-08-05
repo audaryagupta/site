@@ -2,8 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Loader2, Sparkles, Wand2 } from "lucide-react";
+import { Loader2, Sparkles, Wand2, X } from "lucide-react";
 import { Editor } from "./Editor";
+import { UploadButton } from "./UploadButton";
 import { cx } from "@/lib/utils";
 
 export interface ArticleDraft {
@@ -22,6 +23,7 @@ export interface ArticleDraft {
   featured: boolean;
   seoTitle: string;
   seoDescription: string;
+  audioUrl: string;
   publishedAt?: string | null; // YYYY-MM-DD (IST) for the date input
   notifiedAt?: string | null;
 }
@@ -356,6 +358,41 @@ export function ArticleEditor({ initial }: { initial: ArticleDraft }) {
               src={draft.coverImage}
               alt=""
               className="mt-2 h-32 w-full rounded-md border border-line object-cover"
+            />
+          )}
+        </Field>
+
+        <Field label="Your narration (audio)">
+          <p className="mb-2 text-xs text-muted">
+            Optional. Upload yourself reading the piece aloud — a player appears
+            next to the article.
+          </p>
+          {draft.audioUrl ? (
+            <div className="space-y-2">
+              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+              <audio controls src={draft.audioUrl} className="w-full" />
+              <div className="flex items-center gap-3">
+                <UploadButton
+                  kind="audio"
+                  accept="audio/*"
+                  label="Replace"
+                  onDone={(url) => set("audioUrl", url)}
+                />
+                <button
+                  type="button"
+                  onClick={() => set("audioUrl", "")}
+                  className="inline-flex items-center gap-1 text-xs text-muted hover:text-foreground"
+                >
+                  <X size={13} /> Remove
+                </button>
+              </div>
+            </div>
+          ) : (
+            <UploadButton
+              kind="audio"
+              accept="audio/*"
+              label="Upload narration"
+              onDone={(url) => set("audioUrl", url)}
             />
           )}
         </Field>
