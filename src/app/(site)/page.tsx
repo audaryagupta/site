@@ -7,7 +7,7 @@ import { LogoMark } from "@/components/Logo";
 import { EditableText } from "@/components/site-editor/EditableText";
 import { EditableButton } from "@/components/site-editor/EditableButton";
 import { getPublishedArticles, getUsedTopics } from "@/lib/queries";
-import { getSiteContent, pickText, pickButton } from "@/lib/siteContent";
+import { getSiteContent, pickText, pickButton, pickStr } from "@/lib/siteContent";
 import { formatDate } from "@/lib/utils";
 
 export const revalidate = 60;
@@ -42,6 +42,12 @@ export default async function HomePage() {
   const heroSecondary = pickButton(content, "home.hero.secondary", "Get the Weekly Recap", "/newsletter");
   const quoteText = pickText(content, "home.quote.text", "“Any idea that leaves you becomes twice as useful.”");
   const quoteSub = pickText(content, "home.quote.sub", "Notes on economics, ambition and attention");
+
+  const cards: [string, string][] = [
+    [pickStr(content, "home.card1.title", "Essays"), pickStr(content, "home.card1.body", "Longer pieces shaped around argument, observation and context.")],
+    [pickStr(content, "home.card2.title", "The Weekly Recap"), pickStr(content, "home.card2.body", "Ten important stories in business, finance and AI — sourced, linked, and approved before send.")],
+    [pickStr(content, "home.card3.title", "Appointments"), pickStr(content, "home.card3.body", "A direct calendar-backed way to request conversations, interviews or collaborations.")],
+  ];
 
   return (
     <>
@@ -130,11 +136,7 @@ export default async function HomePage() {
 
       <Container className="py-16">
         <div className="grid gap-4 md:grid-cols-3">
-          {[
-            ["Essays", "Longer pieces shaped around argument, observation and context."],
-            ["The Weekly Recap", "Ten important stories in business, finance and AI — sourced, linked, and approved before send."],
-            ["Appointments", "A direct calendar-backed way to request conversations, interviews or collaborations."],
-          ].map(([title, copy], i) => (
+          {cards.map(([title, copy], i) => (
             <div
               key={title}
               className="rounded-2xl border border-line bg-card p-6 transition hover:-translate-y-1 hover:shadow-xl hover:shadow-foreground/5"
@@ -155,10 +157,10 @@ export default async function HomePage() {
         <div className="mb-10 flex items-end justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.25em] text-muted">
-              Latest writing
+              {pickStr(content, "home.latest.eyebrow", "Latest writing")}
             </p>
             <h2 className="mt-2 font-display text-4xl font-semibold tracking-tight">
-              Read the newest pieces.
+              {pickStr(content, "home.latest.heading", "Read the newest pieces.")}
             </h2>
           </div>
           <Link
@@ -172,7 +174,7 @@ export default async function HomePage() {
         {articles.length === 0 ? (
           <div className="rounded-2xl border border-line bg-card p-8">
             <p className="font-serif text-lg text-muted">
-              New essays are on the way. Subscribe below to get the first one.
+              {pickStr(content, "home.latest.empty", "New essays are on the way. Subscribe below to get the first one.")}
             </p>
           </div>
         ) : (
@@ -235,7 +237,7 @@ export default async function HomePage() {
         <Container className="pb-8">
           <div className="flex flex-wrap items-center gap-3 border-y border-line py-6">
             <span className="text-xs uppercase tracking-widest text-muted">
-              Explore by topic
+              {pickStr(content, "home.topics.eyebrow", "Explore by topic")}
             </span>
             {topics.map((t) => (
               <Link
@@ -254,15 +256,13 @@ export default async function HomePage() {
         <Container className="grid gap-8 py-16 md:grid-cols-2 md:items-center">
           <div>
             <p className="text-xs uppercase tracking-[0.25em] text-muted">
-              Weekly briefing
+              {pickStr(content, "home.recap.eyebrow", "Weekly briefing")}
             </p>
             <h2 className="mt-3 font-display text-4xl font-semibold">
-              The Weekly Recap
+              {pickStr(content, "home.recap.heading", "The Weekly Recap")}
             </h2>
             <p className="mt-3 max-w-md font-serif text-lg text-muted">
-              Every week: ten stories that actually mattered in finance,
-              business and AI — direct links, source images, and a personal note
-              before it goes out.
+              {pickStr(content, "home.recap.body", "Every week: ten stories that actually mattered in finance, business and AI — direct links, source images, and a personal note before it goes out.")}
             </p>
           </div>
           <SubscribeForm />

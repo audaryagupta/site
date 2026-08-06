@@ -5,6 +5,7 @@ import { Container } from "@/components/Container";
 import { ContactForm } from "@/components/ContactForm";
 import { SocialIcons } from "@/components/SocialIcons";
 import { getPublicAvailability } from "@/lib/queries";
+import { getSiteContent, pickStr } from "@/lib/siteContent";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -21,20 +22,25 @@ export default async function ContactPage() {
   const availability = await getPublicAvailability();
   const online = availability.filter((a) => a.kind === "online");
   const offline = availability.filter((a) => a.kind === "offline");
+  const content = await getSiteContent();
+  const chips = [
+    pickStr(content, "contact.chip1", "Editorial"),
+    pickStr(content, "contact.chip2", "Business"),
+    pickStr(content, "contact.chip3", "Speaking"),
+  ];
   return (
     <>
       <section className="relative overflow-hidden border-b border-line bg-subtle/35">
         <Container className="grid gap-10 py-16 lg:grid-cols-[0.95fr_1.05fr] lg:items-center lg:py-20">
           <div className="animate-fade-up">
             <p className="text-xs uppercase tracking-[0.25em] text-muted">
-              Contact
+              {pickStr(content, "contact.eyebrow", "Contact")}
             </p>
             <h1 className="mt-4 max-w-2xl font-display text-5xl font-semibold leading-tight tracking-tight md:text-6xl">
-              Let&apos;s turn a good idea into a conversation.
+              {pickStr(content, "contact.title", "Let's turn a good idea into a conversation.")}
             </h1>
             <p className="mt-5 max-w-xl font-serif text-xl leading-relaxed text-muted">
-              Whether it&apos;s a collaboration, a question, an interview, or a
-              calendar request — send the context and I&apos;ll reply from there.
+              {pickStr(content, "contact.sub", "Whether it's a collaboration, a question, an interview, or a calendar request — send the context and I'll reply from there.")}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <a
@@ -47,25 +53,20 @@ export default async function ContactPage() {
                 href="/appointments"
                 className="inline-flex items-center gap-2 rounded-full border border-line bg-background/70 px-5 py-3 text-sm text-muted backdrop-blur transition hover:-translate-y-0.5 hover:text-foreground"
               >
-                <CalendarCheck size={16} /> Request time
+                <CalendarCheck size={16} /> {pickStr(content, "contact.apptButton", "Request time")}
               </Link>
             </div>
           </div>
 
           <div className="rounded-[2rem] border border-line bg-card p-8 shadow-2xl shadow-foreground/5">
             <p className="text-xs uppercase tracking-[0.22em] text-muted">
-              Before you write
+              {pickStr(content, "contact.before.label", "Before you write")}
             </p>
             <p className="mt-6 font-serif text-4xl leading-tight">
-              Send the context: what you want to discuss, why it matters, and
-              what a useful outcome would look like.
+              {pickStr(content, "contact.before.body", "Send the context: what you want to discuss, why it matters, and what a useful outcome would look like.")}
             </p>
             <div className="mt-8 grid gap-3 border-t border-line pt-6 sm:grid-cols-3">
-              {[
-                "Editorial",
-                "Business",
-                "Speaking",
-              ].map((label) => (
+              {chips.map((label) => (
                 <span
                   key={label}
                   className="rounded-full border border-line px-3 py-2 text-center text-xs uppercase tracking-widest text-muted"
@@ -80,9 +81,9 @@ export default async function ContactPage() {
 
       <Container className="grid gap-10 py-16 lg:grid-cols-[1fr_0.9fr]">
         <section className="rounded-2xl border border-line bg-card p-6 shadow-xl shadow-foreground/5 md:p-8">
-          <h2 className="font-display text-3xl font-semibold">Send a message</h2>
+          <h2 className="font-display text-3xl font-semibold">{pickStr(content, "contact.message.heading", "Send a message")}</h2>
           <p className="mt-2 text-sm text-muted">
-            I read everything that comes in.
+            {pickStr(content, "contact.message.sub", "I read everything that comes in.")}
           </p>
           <div className="mt-6">
             <ContactForm />
@@ -92,12 +93,10 @@ export default async function ContactPage() {
         <section id="book" className="space-y-6">
           <div className="rounded-2xl border border-line bg-card p-6 md:p-8">
             <h2 className="font-display text-3xl font-semibold">
-              Book an appointment
+              {pickStr(content, "contact.book.heading", "Book an appointment")}
             </h2>
             <p className="mt-2 font-serif text-muted">
-              Request a Google Meet, Zoom, or in-person meeting. Name, email,
-              phone with country code, purpose, date, time and CAPTCHA are
-              required so invitations and updates reach the right person.
+              {pickStr(content, "contact.book.body", "Request a Google Meet, Zoom, or in-person meeting. Name, email, phone with country code, purpose, date, time and CAPTCHA are required so invitations and updates reach the right person.")}
             </p>
 
             {availability.length > 0 && (
@@ -135,7 +134,7 @@ export default async function ContactPage() {
                 className="group inline-flex h-12 items-center gap-2 rounded-full bg-foreground px-6 text-sm font-medium text-background transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-foreground/10"
               >
                 <CalendarCheck size={17} />
-                Make an appointment
+                {pickStr(content, "contact.bookButton", "Make an appointment")}
                 <ArrowRight
                   size={16}
                   className="transition-transform group-hover:translate-x-0.5"
@@ -145,7 +144,7 @@ export default async function ContactPage() {
           </div>
 
           <div className="rounded-2xl border border-line bg-subtle/60 p-6 text-sm text-muted">
-            <p>New Delhi, India</p>
+            <p>{pickStr(content, "contact.location", "New Delhi, India")}</p>
             <div className="mt-4">
               <SocialIcons size={18} />
             </div>

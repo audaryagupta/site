@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Container } from "@/components/Container";
 import { ArticleCard } from "@/components/ArticleCard";
 import { getPublishedArticles, getUsedTopics } from "@/lib/queries";
+import { getSiteContent, pickStr } from "@/lib/siteContent";
 import { cx } from "@/lib/utils";
 
 export const revalidate = 60;
@@ -20,9 +21,10 @@ export default async function WritingsPage({
   searchParams: { topic?: string };
 }) {
   const topic = searchParams.topic;
-  const [articles, topics] = await Promise.all([
+  const [articles, topics, content] = await Promise.all([
     getPublishedArticles({ topic }),
     getUsedTopics(),
+    getSiteContent(),
   ]);
 
   const activeTopic = topics.find((t) => t.slug === topic);
@@ -31,11 +33,10 @@ export default async function WritingsPage({
     <Container className="py-16">
       <header className="mb-10 max-w-2xl">
         <h1 className="font-display text-5xl font-semibold tracking-tight">
-          My Writings
+          {pickStr(content, "writings.title", "My Writings")}
         </h1>
         <p className="mt-4 font-serif text-lg text-muted">
-          Long and short-form thinking on the forces that shape economies,
-          technology and the world.
+          {pickStr(content, "writings.sub", "Long and short-form thinking on the forces that shape economies, technology and the world.")}
         </p>
       </header>
 
@@ -76,7 +77,7 @@ export default async function WritingsPage({
       )}
 
       {articles.length === 0 ? (
-        <p className="text-muted">Nothing here yet — check back soon.</p>
+        <p className="text-muted">{pickStr(content, "writings.empty", "Nothing here yet — check back soon.")}</p>
       ) : (
         <div className="grid gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
           {articles.map((a, i) => (

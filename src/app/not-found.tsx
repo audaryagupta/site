@@ -1,11 +1,16 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { TicTacToe } from "@/components/TicTacToe";
+import { getSiteContent, pickStr } from "@/lib/siteContent";
 
 export const metadata: Metadata = {
   title: "Page not found",
   robots: { index: false, follow: false },
 };
+
+// Rendered per-request so edits to the 404 copy in Studio → Site text show up
+// immediately (the page reads editable content from the database).
+export const dynamic = "force-dynamic";
 
 // Minimal black-and-white desert line-art wrapped around a big 404 — a nod to
 // the original site's 404, redrawn on-brand. Uses currentColor so it inverts
@@ -102,18 +107,17 @@ function DesertScene() {
   );
 }
 
-export default function NotFound() {
+export default async function NotFound() {
+  const content = await getSiteContent();
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center px-6 py-16 text-center">
       <DesertScene />
 
       <h1 className="mt-6 font-display text-2xl font-semibold">
-        Looks like this page wandered off into the desert.
+        {pickStr(content, "notfound.heading", "Looks like this page wandered off into the desert.")}
       </h1>
       <p className="mt-3 max-w-md font-serif text-lg leading-relaxed text-muted">
-        The link you followed doesn&apos;t exist (anymore). No pressure — play
-        a round of tic-tac-toe against the house while you decide where to head
-        next.
+        {pickStr(content, "notfound.body", "The link you followed doesn't exist (anymore). No pressure — play a round of tic-tac-toe against the house while you decide where to head next.")}
       </p>
 
       <div className="mt-8 w-full max-w-md">
@@ -125,13 +129,13 @@ export default function NotFound() {
           href="/"
           className="rounded-md bg-foreground px-4 py-2 font-medium text-background hover:opacity-90"
         >
-          Back to homepage
+          {pickStr(content, "notfound.homeButton", "Back to homepage")}
         </Link>
         <Link
           href="/writings"
           className="rounded-md border border-line px-4 py-2 hover:bg-subtle"
         >
-          Read the writings
+          {pickStr(content, "notfound.writingsButton", "Read the writings")}
         </Link>
       </div>
     </main>

@@ -4,7 +4,8 @@ import { SocialIcons } from "@/components/SocialIcons";
 import { EditableText } from "@/components/site-editor/EditableText";
 import { EditableImage } from "@/components/site-editor/EditableImage";
 import { getSettings } from "@/lib/queries";
-import { getSiteContent, pickText, pickImage } from "@/lib/siteContent";
+import { getSiteContent, pickText, pickImage, pickStr } from "@/lib/siteContent";
+import { ABOUT_BIO_DEFAULT } from "@/lib/siteText";
 
 export const revalidate = 60;
 
@@ -14,20 +15,6 @@ export const metadata: Metadata = {
   alternates: { canonical: "/about" },
 };
 
-const DEFAULT_BIO = `Hi, I’m Audarya — someone who has always been fascinated by the forces that drive economies, shape global affairs, and influence financial markets. My curiosity about finance, geopolitics, and history led me to take a gap year after my 12th grade and go down the exploration road. In the past I've interned at organizations like the Government of India, Hindustan Times, and Gulf News Dubai, gaining insights into finance, media, and governance along the way.
-
-I have an ever-going quest to share whatever knowledge I have. I believe any information that leaves you becomes 2x more useful than it would have been constricted to you — which led me to start The VentureBuz Forum to support students in developing entrepreneurial skills through competitions and business clubs. My passion for finance and problem-solving also led me to author a book.
-
-Apart from these pursuits, I enjoy learning languages — I speak French semi-fluently and am currently learning Spanish and Sanskrit to expand my global perspective. Through this blog, I hope to share my insights on finance, innovation, history, and geopolitics while documenting my journey of continuous learning.
-
-I look forward to engaging with you all. Please don’t hesitate to reach out.`;
-
-const themes = [
-  ["Finance", "Markets, business models, incentives and the stories behind capital."],
-  ["Public life", "Governance, institutions and the ideas that shape decisions."],
-  ["Writing", "Turning research and observation into essays people can return to."],
-];
-
 export default async function AboutPage() {
   const settings = await getSettings([
     "about_bio",
@@ -36,7 +23,12 @@ export default async function AboutPage() {
     "about_image",
   ]);
   const content = await getSiteContent();
-  const bio = pickText(content, "about.bio", settings.about_bio || DEFAULT_BIO);
+  const bio = pickText(content, "about.bio", settings.about_bio || ABOUT_BIO_DEFAULT);
+  const themes: [string, string][] = [
+    [pickStr(content, "about.theme1.title", "Finance"), pickStr(content, "about.theme1.body", "Markets, business models, incentives and the stories behind capital.")],
+    [pickStr(content, "about.theme2.title", "Public life"), pickStr(content, "about.theme2.body", "Governance, institutions and the ideas that shape decisions.")],
+    [pickStr(content, "about.theme3.title", "Writing"), pickStr(content, "about.theme3.body", "Turning research and observation into essays people can return to.")],
+  ];
   const title = pickText(content, "about.title", settings.about_title || "Audarya Gupta");
   const role = pickText(
     content,
@@ -75,11 +67,10 @@ export default async function AboutPage() {
           </div>
           <div className="mt-6 rounded-2xl border border-line bg-card p-5">
             <p className="text-xs uppercase tracking-[0.22em] text-muted">
-              Connect
+              {pickStr(content, "about.connect.label", "Connect")}
             </p>
             <p className="mt-3 font-serif text-muted">
-              Essays, collaborations, speaking requests and appointments start
-              with a simple message.
+              {pickStr(content, "about.connect.body", "Essays, collaborations, speaking requests and appointments start with a simple message.")}
             </p>
             <div className="mt-5">
               <SocialIcons size={20} />
@@ -89,7 +80,7 @@ export default async function AboutPage() {
 
         <main>
           <p className="text-xs uppercase tracking-[0.25em] text-muted">
-            About Me
+            {pickStr(content, "about.eyebrow", "About Me")}
           </p>
           <EditableText
             id="about.title"

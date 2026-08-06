@@ -41,6 +41,17 @@ export function pickText(
   return { text: v?.text ?? defText, scale: v?.scale ?? defScale };
 }
 
+// Shorthand for plain text regions (no per-element font scaling): returns the
+// saved string for `id`, or the built-in default.
+export function pickStr(
+  map: SiteContentMap,
+  id: string,
+  def: string
+): string {
+  const v = map[id] as TextValue | undefined;
+  return typeof v?.text === "string" && v.text.length > 0 ? v.text : def;
+}
+
 export function pickButton(
   map: SiteContentMap,
   id: string,

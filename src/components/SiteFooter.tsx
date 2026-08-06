@@ -6,7 +6,7 @@ import { SubscribeForm } from "./SubscribeForm";
 import { EasterEggs } from "./EasterEggs";
 import { Logo } from "./Logo";
 import { StudioEntry } from "./StudioEntry";
-import { getSiteContent, pickText } from "@/lib/siteContent";
+import { getSiteContent, pickText, pickStr } from "@/lib/siteContent";
 import { TAGLINE_DEFAULT } from "@/lib/siteText";
 
 export async function SiteFooter() {
@@ -25,7 +25,7 @@ export async function SiteFooter() {
 
         <div>
           <h4 className="text-xs uppercase tracking-widest text-muted">
-            Explore
+            {pickStr(content, "footer.explore.heading", "Explore")}
           </h4>
           <ul className="mt-4 space-y-2 text-sm">
             {site.nav.map((n) => (
@@ -40,11 +40,10 @@ export async function SiteFooter() {
 
         <div>
           <h4 className="text-xs uppercase tracking-widest text-muted">
-            The Weekly Recap
+            {pickStr(content, "footer.recap.heading", "The Weekly Recap")}
           </h4>
           <p className="mt-4 text-sm text-muted">
-            The week&apos;s ten best stories in finance, business & tech —
-            curated, every week.
+            {pickStr(content, "footer.recap.body", "The week's ten best stories in finance, business & tech — curated, every week.")}
           </p>
           <div className="mt-4">
             <SubscribeForm compact />
