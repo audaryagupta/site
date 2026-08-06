@@ -10,6 +10,8 @@ interface Window {
   kind: string;
   city: string;
   dayOfWeek: number;
+  startDate: string;
+  endDate: string;
   startTime: string;
   endTime: string;
   timezone: string;
@@ -30,10 +32,22 @@ const empty = {
   note: "",
 };
 
+function fmtDate(d: string) {
+  if (!d) return "";
+  const dt = new Date(`${d}T00:00:00`);
+  return dt.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export default function AvailabilityPage() {
   const [windows, setWindows] = useState<Window[]>([]);
   const [form, setForm] = useState({ ...empty });
+  const [mode, setMode] = useState<"weekly" | "range">("weekly");
   const [days, setDays] = useState<number[]>([1]);
+  const [range, setRange] = useState({ startDate: "", endDate: "" });
   const [busy, setBusy] = useState(false);
 
   async function load() {
@@ -53,16 +67,26 @@ export default function AvailabilityPage() {
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
-    if (days.length === 0) return;
+    if (mode === "weekly" && days.length === 0) return;
+    if (mode === "range" && !range.startDate) return;
     setBusy(true);
+    const body =
+      mode === "range"
+        ? {
+            ...form,
+            startDate: range.startDate,
+            endDate: range.endDate || range.startDate,
+          }
+        : { ...form, days };
     await fetch("/api/admin/availability", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, days }),
+      body: JSON.stringify(body),
     });
     setBusy(false);
     setForm({ ...empty });
     setDays([1]);
+    setRange({ startDate: "", endDate: "" });
     load();
   }
 
@@ -74,24 +98,52 @@ export default function AvailabilityPage() {
   const input =
     "h-10 rounded-md border border-line bg-background px-3 text-sm outline-none focus:border-foreground";
 
-  const available = windows.filter((w) => w.status !== "unavailable");
-  const unavailable = windows.filter((w) => w.status === "unavailable");
+  const weekly = windows.filter((w) => !w.startDate);
+  const special = windows.filter((w) => w.startDate);
+  const weeklyAvailable = weekly.filter((w) => w.status !== "unavailable");
+  const weeklyUnavailable = weekly.filter((w) => w.status === "unavailable");
+  const specialAvailable = special.filter((w) => w.status !== "unavailable");
+  const specialUnavailable = special.filter((w) => w.status === "unavailable");
 
   return (
     <div>
       <h1 className="font-display text-2xl font-semibold">Availability</h1>
       <p className="mt-1 max-w-2xl text-sm text-muted">
-        Publish recurring windows when you&apos;re available for bookings — or
-        block off unavailable time. Pick several weekdays to add the same window
-        to all of them at once. Offline windows show the city so visitors know
-        where you are. Calendar out-of-office and busy blocks are still
-        respected when a request is accepted.
+        Set your <strong>weekly default</strong> hours, then layer{" "}
+        <strong>special date ranges</strong> on top — e.g. different hours for a
+        busy week, or block off travel/holidays. For any date a special range
+        covers, it overrides the weekly default. Offline windows show the city
+        so visitors know where you are. Calendar out-of-office and busy blocks
+        are still respected when a request is accepted.
       </p>
 
       <form
         onSubmit={add}
         className="mt-6 space-y-4 rounded-lg border border-line bg-card p-4"
       >
+        <div className="inline-flex rounded-md border border-line p-0.5 text-sm">
+          {(
+            [
+              ["weekly", "Weekly default"],
+              ["range", "Special date range"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setMode(key)}
+              className={cx(
+                "rounded px-3 py-1.5 transition",
+                mode === key
+                  ? "bg-foreground text-background"
+                  : "text-muted hover:text-foreground"
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div className="grid items-end gap-3 sm:grid-cols-6">
           <label className="block">
             <span className="mb-1 block text-xs uppercase tracking-widest text-muted">
@@ -169,81 +221,151 @@ export default function AvailabilityPage() {
           </label>
         </div>
 
-        <div>
-          <div className="mb-1.5 flex items-center justify-between">
-            <span className="text-xs uppercase tracking-widest text-muted">
-              Repeat on
-            </span>
-            <div className="flex gap-3 text-xs">
-              <button
-                type="button"
-                className="text-muted underline hover:text-foreground"
-                onClick={() => setDays([...WEEKDAYS])}
-              >
-                Weekdays
-              </button>
-              <button
-                type="button"
-                className="text-muted underline hover:text-foreground"
-                onClick={() => setDays([...ALL_DAYS])}
-              >
-                Every day
-              </button>
-              <button
-                type="button"
-                className="text-muted underline hover:text-foreground"
-                onClick={() => setDays([])}
-              >
-                Clear
-              </button>
+        {mode === "weekly" ? (
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="text-xs uppercase tracking-widest text-muted">
+                Repeat on
+              </span>
+              <div className="flex gap-3 text-xs">
+                <button
+                  type="button"
+                  className="text-muted underline hover:text-foreground"
+                  onClick={() => setDays([...WEEKDAYS])}
+                >
+                  Weekdays
+                </button>
+                <button
+                  type="button"
+                  className="text-muted underline hover:text-foreground"
+                  onClick={() => setDays([...ALL_DAYS])}
+                >
+                  Every day
+                </button>
+                <button
+                  type="button"
+                  className="text-muted underline hover:text-foreground"
+                  onClick={() => setDays([])}
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {DAYS.map((d, i) => {
+                const on = days.includes(i);
+                return (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => toggleDay(i)}
+                    className={cx(
+                      "h-9 w-12 rounded-md border text-sm transition",
+                      on
+                        ? "border-foreground bg-foreground text-background"
+                        : "border-line text-muted hover:border-foreground hover:text-foreground"
+                    )}
+                  >
+                    {d}
+                  </button>
+                );
+              })}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {DAYS.map((d, i) => {
-              const on = days.includes(i);
-              return (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => toggleDay(i)}
-                  className={cx(
-                    "h-9 w-12 rounded-md border text-sm transition",
-                    on
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-line text-muted hover:border-foreground hover:text-foreground"
-                  )}
-                >
-                  {d}
-                </button>
-              );
-            })}
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1 block text-xs uppercase tracking-widest text-muted">
+                Start date
+              </span>
+              <input
+                type="date"
+                className={`${input} w-full`}
+                value={range.startDate}
+                onChange={(e) =>
+                  setRange((r) => ({ ...r, startDate: e.target.value }))
+                }
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs uppercase tracking-widest text-muted">
+                End date (blank = same day)
+              </span>
+              <input
+                type="date"
+                className={`${input} w-full`}
+                min={range.startDate || undefined}
+                value={range.endDate}
+                onChange={(e) =>
+                  setRange((r) => ({ ...r, endDate: e.target.value }))
+                }
+              />
+            </label>
+            <p className="text-xs text-muted sm:col-span-2">
+              Applies these hours to every date in the range, overriding your
+              weekly default. Use <strong>Unavailable</strong> to block off
+              travel or holidays.
+            </p>
           </div>
-        </div>
+        )}
 
         <button
           type="submit"
-          disabled={busy || days.length === 0}
+          disabled={
+            busy ||
+            (mode === "weekly" ? days.length === 0 : !range.startDate)
+          }
           className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md bg-foreground px-4 text-sm text-background disabled:opacity-50"
         >
           <Plus size={15} />
-          {days.length > 1
-            ? `Add to ${days.length} days`
-            : "Add window"}
+          {mode === "range"
+            ? "Add special window"
+            : days.length > 1
+              ? `Add to ${days.length} days`
+              : "Add window"}
         </button>
       </form>
 
       <div className="mt-8 space-y-6">
-        <WindowGroup
-          title="Available"
-          rows={available}
-          onRemove={remove}
-        />
-        <WindowGroup
-          title="Unavailable (blocked)"
-          rows={unavailable}
-          onRemove={remove}
-          blocked
-        />
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-muted">
+            Weekly default
+          </h2>
+          <div className="mt-3 space-y-6">
+            <WindowGroup
+              title="Available"
+              rows={weeklyAvailable}
+              onRemove={remove}
+            />
+            <WindowGroup
+              title="Unavailable (blocked)"
+              rows={weeklyUnavailable}
+              onRemove={remove}
+              blocked
+            />
+          </div>
+        </div>
+
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-muted">
+            Special date ranges
+          </h2>
+          <div className="mt-3 space-y-6">
+            <WindowGroup
+              title="Available"
+              rows={specialAvailable}
+              onRemove={remove}
+              range
+            />
+            <WindowGroup
+              title="Unavailable (blocked)"
+              rows={specialUnavailable}
+              onRemove={remove}
+              blocked
+              range
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -254,11 +376,13 @@ function WindowGroup({
   rows,
   onRemove,
   blocked,
+  range,
 }: {
   title: string;
   rows: Window[];
   onRemove: (id: string) => void;
   blocked?: boolean;
+  range?: boolean;
 }) {
   return (
     <div>
@@ -283,7 +407,14 @@ function WindowGroup({
                 >
                   {w.kind === "offline" ? "In person" : "Online"}
                 </span>{" "}
-                <strong>{DAYS[w.dayOfWeek]}</strong> {w.startTime}–{w.endTime}{" "}
+                <strong>
+                  {range
+                    ? w.endDate && w.endDate !== w.startDate
+                      ? `${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}`
+                      : fmtDate(w.startDate)
+                    : DAYS[w.dayOfWeek]}
+                </strong>{" "}
+                {w.startTime}–{w.endTime}{" "}
                 <span className="text-muted">({w.timezone})</span>
                 {w.city && <span className="text-muted"> · {w.city}</span>}
               </div>

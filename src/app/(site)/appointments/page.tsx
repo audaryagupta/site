@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Container } from "@/components/Container";
 import { AppointmentBooker } from "@/components/AppointmentBooker";
-import { getPublicAvailability } from "@/lib/queries";
+import { getPublicAvailability, getSpecialAvailability } from "@/lib/queries";
 
 export const metadata: Metadata = {
   title: "Book an appointment",
@@ -15,9 +15,30 @@ const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export const revalidate = 300;
 
 export default async function AppointmentsPage() {
-  const availability = await getPublicAvailability();
+  const [availability, specials] = await Promise.all([
+    getPublicAvailability(),
+    getSpecialAvailability(),
+  ]);
   const online = availability.filter((a) => a.kind === "online");
   const offline = availability.filter((a) => a.kind === "offline");
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const upcomingSpecials = specials
+    .filter((s) => (s.endDate || s.startDate) >= todayStr)
+    .slice(0, 6);
+  const fmtRange = (s: (typeof specials)[number]) => {
+    const f = (d: string) =>
+      new Date(`${d}T00:00:00`).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
+    const dates =
+      s.endDate && s.endDate !== s.startDate
+        ? `${f(s.startDate)}–${f(s.endDate)}`
+        : f(s.startDate);
+    return s.status === "unavailable"
+      ? `${dates}: away`
+      : `${dates}: ${s.startTime}–${s.endTime}${s.kind === "offline" ? ` (${s.city || "in person"})` : ""}`;
+  };
 
   return (
     <Container className="py-16">
@@ -43,7 +64,7 @@ export default async function AppointmentsPage() {
           </p>
         </header>
 
-        {availability.length > 0 && (
+        {(availability.length > 0 || upcomingSpecials.length > 0) && (
           <div className="mt-8 rounded-lg border border-line bg-subtle/50 p-4 text-sm">
             <p className="text-xs uppercase tracking-widest text-muted">
               Current availability
@@ -67,6 +88,14 @@ export default async function AppointmentsPage() {
                   .join(" · ")}
               </p>
             )}
+            {upcomingSpecials.length > 0 && (
+              <p className="mt-2 border-t border-line pt-2 text-muted">
+                <span className="font-medium text-foreground">
+                  Special dates:
+                </span>{" "}
+                {upcomingSpecials.map((s) => fmtRange(s)).join(" · ")}
+              </p>
+            )}
           </div>
         )}
 
@@ -77,6 +106,15 @@ export default async function AppointmentsPage() {
               kind: w.kind,
               city: w.city,
               dayOfWeek: w.dayOfWeek,
+              startTime: w.startTime,
+              endTime: w.endTime,
+            }))}
+            specials={specials.map((w) => ({
+              status: w.status,
+              kind: w.kind,
+              city: w.city,
+              startDate: w.startDate,
+              endDate: w.endDate,
               startTime: w.startTime,
               endTime: w.endTime,
             }))}

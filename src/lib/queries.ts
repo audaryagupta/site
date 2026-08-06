@@ -103,9 +103,20 @@ export async function getSentNewsletters() {
 }
 
 export async function getPublicAvailability() {
+  // Weekly default windows the visitor can book (recurring, startDate == "").
   return prisma.availability.findMany({
-    where: { active: true, status: "available" },
+    where: { active: true, status: "available", startDate: "" },
     orderBy: [{ kind: "asc" }, { dayOfWeek: "asc" }, { startTime: "asc" }],
+  });
+}
+
+// Special date-range windows (both available and unavailable) that override the
+// weekly default for the dates they cover. Returned to the booker so it can
+// open special hours or block ranges (e.g. travel/holidays) per date.
+export async function getSpecialAvailability() {
+  return prisma.availability.findMany({
+    where: { active: true, NOT: { startDate: "" } },
+    orderBy: [{ startDate: "asc" }, { kind: "asc" }, { startTime: "asc" }],
   });
 }
 

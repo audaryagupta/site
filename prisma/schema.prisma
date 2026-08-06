@@ -152,7 +152,9 @@ model Availability {
   status    String   @default("available") // available | unavailable (blocked)
   kind      String   @default("online") // online | offline
   city      String   @default("")       // shown for offline windows
-  dayOfWeek Int       @default(1)         // 0=Sun … 6=Sat
+  dayOfWeek Int       @default(1)         // 0=Sun … 6=Sat (used when this is a weekly default)
+  startDate String   @default("")        // "" = recurring weekly default; else YYYY-MM-DD special range start
+  endDate   String   @default("")        // YYYY-MM-DD special range end (inclusive); applies to every date in range
   startTime String   @default("10:00")
   endTime   String   @default("18:00")
   timezone  String   @default("Asia/Kolkata")

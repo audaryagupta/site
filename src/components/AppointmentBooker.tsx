@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -22,6 +22,41 @@ type Window = {
   startTime: string;
   endTime: string;
 };
+
+// A special date-range window that overrides the weekly default for every date
+// in [startDate, endDate]. `available` opens special hours; `unavailable`
+// blocks those times (e.g. travel/holidays).
+type Special = {
+  status: string;
+  kind: string;
+  city: string;
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
+};
+
+type Range = { start: string; end: string };
+
+// Remove the block intervals from the base ranges, splitting ranges as needed.
+function subtractBlocks(ranges: Range[], blocks: Range[]): Range[] {
+  let cur = ranges.map((r) => ({ s: toMinutes(r.start), e: toMinutes(r.end) }));
+  for (const b of blocks) {
+    const bs = toMinutes(b.start);
+    const be = toMinutes(b.end);
+    const next: { s: number; e: number }[] = [];
+    for (const r of cur) {
+      if (be <= r.s || bs >= r.e) {
+        next.push(r);
+        continue;
+      }
+      if (bs > r.s) next.push({ s: r.s, e: Math.min(bs, r.e) });
+      if (be < r.e) next.push({ s: Math.max(be, r.s), e: r.e });
+    }
+    cur = next.filter((r) => r.e > r.s);
+  }
+  return cur.map((r) => ({ start: toLabel(r.s), end: toLabel(r.e) }));
+}
 
 const MODES = [
   { key: "meet", label: "Google Meet", icon: Video, kind: "online" },
@@ -70,9 +105,11 @@ function to12h(hhmm: string) {
 
 export function AppointmentBooker({
   windows = [],
+  specials = [],
   variant = "inline",
 }: {
   windows?: Window[];
+  specials?: Special[];
   variant?: "inline" | "page";
 }) {
   const isPage = variant === "page";
@@ -111,14 +148,36 @@ export function AppointmentBooker({
 
   const kind = MODES.find((m) => m.key === form.mode)?.kind ?? "online";
 
-  // Weekdays (0–6) that have at least one published window for this mode kind.
-  const availableWeekdays = useMemo(() => {
-    const set = new Set<number>();
-    for (const w of windows) if (w.kind === kind) set.add(w.dayOfWeek);
-    return set;
-  }, [windows, kind]);
+  // Whether any availability (weekly default or special date range) is defined
+  // for this mode kind. When none, visitors can pick any day/time freely.
+  const hasWindows =
+    windows.some((w) => w.kind === kind) ||
+    specials.some((s) => s.kind === kind);
 
-  const hasWindows = windows.some((w) => w.kind === kind);
+  // Resolve the bookable time ranges for a specific date, applying date-range
+  // specials on top of the weekly default: an available special replaces the
+  // weekly hours for that date, and an unavailable special blocks those times.
+  const rangesForDate = useCallback(
+    (dateStr: string): Range[] => {
+      const covering = specials.filter(
+        (s) => s.kind === kind && s.startDate <= dateStr && dateStr <= s.endDate
+      );
+      const openSpecials = covering.filter((s) => s.status !== "unavailable");
+      const blocks = covering.filter((s) => s.status === "unavailable");
+      const day = new Date(`${dateStr}T00:00:00`).getDay();
+      const base: Range[] = openSpecials.length
+        ? openSpecials.map((s) => ({ start: s.startTime, end: s.endTime }))
+        : windows
+            .filter((w) => w.kind === kind && w.dayOfWeek === day)
+            .map((w) => ({ start: w.startTime, end: w.endTime }));
+      if (!blocks.length) return base;
+      return subtractBlocks(
+        base,
+        blocks.map((b) => ({ start: b.startTime, end: b.endTime }))
+      );
+    },
+    [windows, specials, kind]
+  );
 
   // The grid of days for the visible month.
   const monthDays = useMemo(() => {
@@ -138,31 +197,28 @@ export function AppointmentBooker({
 
   function daySelectable(d: Date) {
     if (d < today) return false;
-    // When there are published windows, only allow matching weekdays.
-    if (hasWindows) return availableWeekdays.has(d.getDay());
+    // When availability is defined, only allow dates that resolve to at least
+    // one open range (after applying weekly defaults + date-range specials).
+    if (hasWindows) return rangesForDate(ymd(d)).length > 0;
     return true;
   }
 
-  // Slots for the chosen date, derived from published availability windows
-  // that match the selected mode's kind and the date's weekday.
+  // Slots for the chosen date, derived from the resolved ranges for that date
+  // (weekly default overridden/blocked by any date-range specials).
   const slots = useMemo(() => {
     if (!form.date) return [];
-    const day = new Date(`${form.date}T00:00:00`).getDay();
-    const matching = windows.filter(
-      (w) => w.kind === kind && w.dayOfWeek === day
-    );
     const out: string[] = [];
-    for (const w of matching) {
+    for (const r of rangesForDate(form.date)) {
       for (
-        let t = toMinutes(w.startTime);
-        t + form.duration <= toMinutes(w.endTime);
+        let t = toMinutes(r.start);
+        t + form.duration <= toMinutes(r.end);
         t += form.duration
       ) {
         out.push(toLabel(t));
       }
     }
     return Array.from(new Set(out)).sort();
-  }, [form.date, form.duration, kind, windows]);
+  }, [form.date, form.duration, rangesForDate]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
