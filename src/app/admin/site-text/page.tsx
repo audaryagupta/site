@@ -11,6 +11,11 @@ export default function SiteTextPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
+
+  const editingField = editing
+    ? SITE_TEXT_FIELDS.find((f) => f.id === editing)
+    : undefined;
 
   async function load() {
     setLoading(true);
@@ -104,7 +109,20 @@ export default function SiteTextPage() {
                           </button>
                         )}
                       </div>
-                      {f.multiline ? (
+                      {f.longform ? (
+                        <div className="rounded-md border border-line bg-background p-3">
+                          <p className="line-clamp-3 whitespace-pre-line text-sm text-muted">
+                            {values[f.id] || f.default}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setEditing(f.id)}
+                            className="mt-3 rounded-md border border-line px-3 py-1.5 text-xs font-medium hover:bg-subtle"
+                          >
+                            Open editor
+                          </button>
+                        </div>
+                      ) : f.multiline ? (
                         <textarea
                           className={`${input} min-h-20`}
                           value={values[f.id] ?? ""}
@@ -142,6 +160,67 @@ export default function SiteTextPage() {
             {msg && <span className="text-sm text-muted">{msg}</span>}
           </div>
         </>
+      )}
+
+      {editingField && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-background/95 backdrop-blur">
+          <div className="mx-auto flex h-full w-full max-w-4xl flex-col px-6 py-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="font-display text-lg font-semibold">
+                  {editingField.label}
+                </h2>
+                {editingField.help && (
+                  <p className="mt-0.5 text-xs text-muted">{editingField.help}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setValues((v) => ({
+                      ...v,
+                      [editingField.id]: editingField.default,
+                    }))
+                  }
+                  className="rounded-md border border-line px-3 py-1.5 text-xs hover:bg-subtle"
+                >
+                  Reset to default
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditing(null)}
+                  className="rounded-md border border-line px-3 py-1.5 text-xs hover:bg-subtle"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await save();
+                    setEditing(null);
+                  }}
+                  disabled={saving}
+                  className="rounded-md bg-foreground px-4 py-1.5 text-xs text-background disabled:opacity-60"
+                >
+                  {saving ? "Saving…" : "Save & close"}
+                </button>
+              </div>
+            </div>
+            <textarea
+              autoFocus
+              className="mt-4 h-full w-full flex-1 resize-none rounded-md border border-line bg-card p-4 font-mono text-sm leading-relaxed outline-none focus:border-foreground"
+              value={values[editingField.id] ?? ""}
+              onChange={(e) =>
+                setValues((v) => ({ ...v, [editingField.id]: e.target.value }))
+              }
+            />
+            <p className="mt-2 text-xs text-muted">
+              Leave a blank line between paragraphs. Your spacing and line breaks
+              are preserved on the page.
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );

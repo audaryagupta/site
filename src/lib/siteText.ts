@@ -9,6 +9,9 @@ export interface SiteTextField {
   label: string;
   default: string;
   multiline?: boolean;
+  // Long-form copy (e.g. legal pages): shown with an "Open editor" button that
+  // launches a full-screen pop-up so paragraphs and spacing are easy to edit.
+  longform?: boolean;
   help?: string;
 }
 
@@ -29,6 +32,30 @@ I have an ever-going quest to share whatever knowledge I have. I believe any inf
 Apart from these pursuits, I enjoy learning languages — I speak French semi-fluently and am currently learning Spanish and Sanskrit to expand my global perspective. Through this blog, I hope to share my insights on finance, innovation, history, and geopolitics while documenting my journey of continuous learning.
 
 I look forward to engaging with you all. Please don’t hesitate to reach out.`;
+
+export const PRIVACY_BODY_DEFAULT = `This website collects only the information you choose to provide, such as your name, email address, phone number, message, newsletter subscription details, appointment request details, comments and any files or content you submit through the Studio or public forms.
+
+Your information is used to operate the website, respond to messages, send newsletters you requested, manage subscriptions and unsubscribes, schedule appointments, send calendar invitations, prevent abuse, keep activity logs, and improve the site.
+
+To understand how the site is used, we keep first-party, aggregate analytics — pages viewed, visit counts, approximate visit duration, device type, referring source and a coarse location (country, region and city) derived from your IP address. We do not store your IP address itself, and we do not use third-party advertising trackers or build profiles to identify you personally.
+
+The site may use trusted third-party services such as Google, Fly.io, email providers, analytics, CAPTCHA/security providers and AI/news services where necessary to operate these features. Information is not sold. It may be shared only where needed to run the service, comply with law, protect the website, or complete a request you made.
+
+Newsletter emails include an unsubscribe link. You can also ask for corrections or deletion where applicable by writing to audarya@byaudarya.com.
+
+No internet service is perfectly secure or permanently available. The website is provided on a reasonable-efforts basis and may be changed, paused or discontinued at any time.`;
+
+export const TERMS_BODY_DEFAULT = `By using this website, you agree to use it lawfully and respectfully. Do not misuse forms, attempt to access private Studio areas, interfere with the site, submit unlawful or harmful content, or impersonate another person.
+
+All writing, design, images, emails, downloads and other materials on this website are provided for general informational, educational and personal editorial purposes only. They are not professional, legal, financial, investment, tax, medical or other regulated advice. You are responsible for your own decisions and should seek qualified advice before relying on anything you read here.
+
+To the fullest extent permitted by applicable law, Audarya Gupta, byAudarya and associated contributors are not liable for any direct, indirect, incidental, consequential, special, punitive or other losses arising from use of this website, reliance on its content, appointment scheduling, email delays, broken links, third-party services, inaccuracies, interruptions, data loss or security incidents.
+
+External links are provided for convenience. Their inclusion does not mean endorsement, and byAudarya is not responsible for third-party content, policies, availability or accuracy.
+
+Content on this site may not be copied, republished, scraped, trained on, sold or redistributed without written permission, except for brief quotations with clear attribution and a link back to the original page.
+
+These terms may be updated from time to time. Continued use of the website means you accept the current version. Questions can be sent to audarya@byaudarya.com.`;
 
 export const SITE_TEXT_GROUPS: SiteTextGroup[] = [
   {
@@ -151,6 +178,26 @@ export const SITE_TEXT_GROUPS: SiteTextGroup[] = [
       { id: "footer.explore.heading", label: "“Explore” column heading", default: "Explore" },
       { id: "footer.recap.heading", label: "Recap column heading", default: "The Weekly Recap" },
       { id: "footer.recap.body", label: "Recap column text", default: "The week's ten best stories in finance, business & tech — curated, every week.", multiline: true },
+    ],
+  },
+  {
+    label: "Legal pages",
+    description: "Privacy Policy and Terms of Use. Use “Open editor” for the full text.",
+    fields: [
+      { id: "legal.eyebrow", label: "Eyebrow (both pages)", default: "Website policy" },
+      { id: "legal.privacy.title", label: "Privacy — title", default: "Privacy Policy" },
+      { id: "legal.privacy.body", label: "Privacy — full text", default: PRIVACY_BODY_DEFAULT, multiline: true, longform: true, help: "Leave a blank line between paragraphs. Email addresses become links automatically." },
+      { id: "legal.terms.title", label: "Terms — title", default: "Terms of Use" },
+      { id: "legal.terms.body", label: "Terms — full text", default: TERMS_BODY_DEFAULT, multiline: true, longform: true, help: "Leave a blank line between paragraphs. Email addresses become links automatically." },
+    ],
+  },
+  {
+    label: "Coming soon (pre-launch page)",
+    description: "The teaser shown on the main domain before you Go live.",
+    fields: [
+      { id: "coming.eyebrow", label: "Eyebrow", default: "Coming soon" },
+      { id: "coming.heading", label: "Headline", default: "A new home for the writing is on its way." },
+      { id: "coming.body", label: "Text", default: "Essays, dispatches and curiosities about the world and everything in it. Leave your email and you'll be the first to know when it goes live.", multiline: true },
     ],
   },
   {

@@ -25,7 +25,17 @@ function useCountdown(target?: string) {
   };
 }
 
-export function ComingSoon({ launchAt }: { launchAt?: string }) {
+export function ComingSoon({
+  launchAt,
+  eyebrow = "Coming soon",
+  heading = "A new home for the writing is on its way.",
+  body = "Essays, dispatches and curiosities about the world and everything in it. Leave your email and you'll be the first to know when it goes live.",
+}: {
+  launchAt?: string;
+  eyebrow?: string;
+  heading?: string;
+  body?: string;
+}) {
   const c = useCountdown(launchAt);
 
   return (
@@ -35,15 +45,13 @@ export function ComingSoon({ launchAt }: { launchAt?: string }) {
       </div>
 
       <p className="mt-10 text-xs uppercase tracking-[0.3em] text-muted animate-fade-up">
-        Coming soon
+        {eyebrow}
       </p>
       <h1 className="mt-4 max-w-2xl font-display text-4xl font-semibold leading-tight sm:text-5xl animate-fade-up">
-        A new home for the writing is on its way.
+        {heading}
       </h1>
       <p className="mt-4 max-w-md text-muted animate-fade-up">
-        Essays, dispatches and curiosities about the world and everything in
-        it. Leave your email and you&apos;ll be the first to know when it goes
-        live.
+        {body}
       </p>
 
       {c && (

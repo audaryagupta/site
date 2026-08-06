@@ -6,6 +6,7 @@ import { ComingSoon } from "@/components/ComingSoon";
 import { VisitTracker } from "@/components/VisitTracker";
 import { SiteEditorBar } from "@/components/site-editor/SiteEditorBar";
 import { getSettings } from "@/lib/queries";
+import { getSiteContent, pickStr } from "@/lib/siteContent";
 
 // Pre-launch, the primary production domain shows a teaser until you "Go live"
 // from the console. Any other host (e.g. the temporary *.fly.dev URL) always
@@ -25,7 +26,15 @@ export default async function SiteLayout({
   if (onPrimary) {
     const settings = await getSettings(["site_live", "launch_at"]);
     if (settings.site_live !== "true") {
-      return <ComingSoon launchAt={settings.launch_at || undefined} />;
+      const content = await getSiteContent();
+      return (
+        <ComingSoon
+          launchAt={settings.launch_at || undefined}
+          eyebrow={pickStr(content, "coming.eyebrow", "Coming soon")}
+          heading={pickStr(content, "coming.heading", "A new home for the writing is on its way.")}
+          body={pickStr(content, "coming.body", "Essays, dispatches and curiosities about the world and everything in it. Leave your email and you'll be the first to know when it goes live.")}
+        />
+      );
     }
   }
 
