@@ -6,14 +6,18 @@ import { SubscribeForm } from "./SubscribeForm";
 import { EasterEggs } from "./EasterEggs";
 import { Logo } from "./Logo";
 import { StudioEntry } from "./StudioEntry";
+import { getSiteContent, pickText } from "@/lib/siteContent";
+import { TAGLINE_DEFAULT } from "@/lib/siteText";
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  const content = await getSiteContent();
+  const tagline = pickText(content, "global.tagline", TAGLINE_DEFAULT).text;
   return (
     <footer className="mt-24 border-t border-line bg-subtle/60">
       <Container className="grid gap-12 py-14 md:grid-cols-[1.5fr_1fr_1.5fr]">
         <div>
           <Logo className="h-9" />
-          <p className="mt-3 max-w-xs text-sm text-muted">{site.tagline}.</p>
+          <p className="mt-3 max-w-xs text-sm text-muted">{tagline}.</p>
           <div className="mt-5">
             <SocialIcons size={18} />
           </div>

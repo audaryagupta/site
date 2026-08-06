@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { guard } from "@/lib/adminApi";
 import { logActivity } from "@/lib/activity";
@@ -46,5 +47,7 @@ export async function PUT(req: Request) {
     });
   }
   await logActivity("site.content_edited", `${edits.length} region(s) updated`);
+  // Push edits live immediately rather than waiting for ISR to expire.
+  revalidatePath("/", "layout");
   return NextResponse.json({ ok: true });
 }

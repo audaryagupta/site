@@ -78,6 +78,25 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   ...(sharedCookies ? { cookies: sharedCookies } : {}),
   callbacks: {
+    // Keep post-login redirects on our own domain. The console lives on
+    // studio.byaudarya.com while the public site is www.byaudarya.com, so allow
+    // any *.byaudarya.com subdomain (not just the NEXTAUTH_URL origin) — the
+    // shared *.byaudarya.com cookie makes the session valid across both.
+    async redirect({ url, baseUrl }) {
+      try {
+        const target = new URL(url, baseUrl);
+        const host = target.hostname.toLowerCase();
+        const ok =
+          host === "localhost" ||
+          host === "byaudarya.com" ||
+          host.endsWith(".byaudarya.com") ||
+          target.origin === baseUrl;
+        if (ok) return target.toString();
+      } catch {
+        // fall through to baseUrl
+      }
+      return baseUrl;
+    },
     // Any Google account may sign in (needed for public article comments).
     // Admin-only areas are gated separately via requireAdmin()/requireOwner().
     async signIn({ user }) {

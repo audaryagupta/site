@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { site } from "@/lib/site";
 import { LinkIcon } from "@/lib/linkIcons";
 import { LogoMark } from "@/components/Logo";
+import { getSiteContent, pickText } from "@/lib/siteContent";
+import { QR_QUOTE_DEFAULT, TAGLINE_DEFAULT } from "@/lib/siteText";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +16,15 @@ export const metadata: Metadata = {
 };
 
 export default async function LinkHubPage() {
-  const links = await prisma.linkItem.findMany({
-    where: { active: true },
-    orderBy: [{ order: "asc" }, { createdAt: "asc" }],
-  });
+  const [links, content] = await Promise.all([
+    prisma.linkItem.findMany({
+      where: { active: true },
+      orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+    }),
+    getSiteContent(),
+  ]);
+  const quote = pickText(content, "qr.quote", QR_QUOTE_DEFAULT).text;
+  const tagline = pickText(content, "global.tagline", TAGLINE_DEFAULT).text;
 
   return (
     <main className="relative isolate min-h-screen overflow-hidden">
@@ -31,11 +38,11 @@ export default async function LinkHubPage() {
         </Link>
 
         <p className="mt-5 animate-fade-up text-center font-serif text-2xl italic leading-snug [animation-delay:80ms] sm:text-3xl">
-          “Well, you did end up scanning my QR code!”
+          {`“${quote}”`}
         </p>
 
         <p className="mt-3 animate-fade-up text-xs uppercase tracking-[0.25em] text-muted [animation-delay:140ms]">
-          The personal blog of Audarya Gupta
+          {tagline}
         </p>
 
         <div className="mt-4 h-px w-16 animate-fade-up bg-line [animation-delay:180ms]" />

@@ -22,6 +22,7 @@ import {
   Settings,
   Sparkles,
   Target,
+  Type,
   UserCog,
   Users,
 } from "lucide-react";
@@ -52,6 +53,7 @@ const groups: NavGroup[] = [
       { href: "/admin/writings", label: "Writings", icon: PenLine },
       { href: "/admin/newsletters", label: "Newsletters", icon: Mail },
       { href: "/admin/now", label: "Now page", icon: Sparkles },
+      { href: "/admin/site-text", label: "Site text", icon: Type, ownerOnly: true },
       { href: "/admin/games", label: "Games", icon: Gamepad2 },
       { href: "/admin/links", label: "Link hub", icon: Link2 },
     ],
