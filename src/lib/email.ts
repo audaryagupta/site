@@ -22,9 +22,19 @@ export function emailConfigured(): boolean {
   return Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
 }
 
+// Default "from" for transactional site email (newsletters, appointments,
+// contact replies, digests). Points at the primary mailbox.
 export const EMAIL_FROM =
   process.env.EMAIL_FROM ||
   process.env.SMTP_USER ||
+  "Audarya Gupta <mail@byaudarya.com>";
+
+// "from" for personal greeting / birthday / celebration email. Kept separate so
+// these come from Audarya's personal address. To actually send as this address
+// through the SMTP account, it must be a verified "Send mail as" alias on that
+// Gmail/Workspace account (or set GREETINGS_FROM to the SMTP account itself).
+export const GREETINGS_FROM =
+  process.env.GREETINGS_FROM ||
   "Audarya Gupta <audarya@byaudarya.com>";
 
 export interface SendArgs {
@@ -33,12 +43,20 @@ export interface SendArgs {
   html: string;
   text?: string;
   replyTo?: string;
+  from?: string;
 }
 
-export async function sendEmail({ to, subject, html, text, replyTo }: SendArgs) {
+export async function sendEmail({
+  to,
+  subject,
+  html,
+  text,
+  replyTo,
+  from,
+}: SendArgs) {
   const transport = getTransport();
   return transport.sendMail({
-    from: EMAIL_FROM,
+    from: from || EMAIL_FROM,
     to,
     subject,
     html,

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { emailConfigured, sendEmail } from "@/lib/email";
+import { emailConfigured, sendEmail, GREETINGS_FROM } from "@/lib/email";
 import { absoluteUrl, escapeHtml } from "@/lib/utils";
 
 const schema = z.object({
@@ -33,6 +33,7 @@ export async function POST(req: Request) {
       try {
         await sendEmail({
           to: process.env.ADMIN_EMAIL,
+          from: GREETINGS_FROM,
           replyTo: data.requesterEmail,
           subject: `Greeting request (${data.occasion}) from ${data.requesterName}`,
           html: `<p><strong>${escapeHtml(
