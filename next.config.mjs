@@ -4,6 +4,10 @@ const nextConfig = {
   images: {
     remotePatterns: [{ protocol: "https", hostname: "**" }],
   },
+  // Enables src/instrumentation.ts (drives the scheduled-email ticker).
+  experimental: {
+    instrumentationHook: true,
+  },
   // Preserve SEO from the previous Wix site: its indexed URLs 301 to the new
   // structure so existing links and search rankings carry over. Article slugs
   // are kept identical (/post/<slug> -> /writings/<slug>).

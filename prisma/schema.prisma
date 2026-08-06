@@ -293,6 +293,24 @@ model Book {
   @@index([status])
 }
 
+// An email composed in Studio and queued to send at a future time. Sent by the
+// /api/cron/send-scheduled job once sendAt has passed.
+model ScheduledEmail {
+  id         String   @id @default(cuid())
+  subject    String
+  html       String
+  recipients String                      // JSON array of email addresses
+  account    String   @default("personal") // mass | personal
+  sendAt     DateTime
+  status     String   @default("scheduled") // scheduled | sent | failed | canceled
+  sentCount  Int      @default(0)
+  error      String   @default("")
+  createdAt  DateTime @default(now())
+  sentAt     DateTime?
+
+  @@index([status, sendAt])
+}
+
 // System log of major actions (article published, contact added, appointment
 // accepted, newsletter sent…). Not UI clicks. Exported monthly to Google Drive.
 model ActivityLog {

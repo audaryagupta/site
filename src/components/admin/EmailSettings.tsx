@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { CheckCircle2, Mail, Send, Upload } from "lucide-react";
 import { RichTextEditor } from "./RichTextEditor";
 import { cx } from "@/lib/utils";
+import { TIMEZONES, DEFAULT_TIMEZONE } from "@/lib/timezones";
 
 interface Conn {
   connected: boolean;
@@ -19,6 +20,7 @@ export function EmailSettings() {
   const [personal, setPersonal] = useState<Conn>({ connected: false, email: "" });
   const [signature, setSignature] = useState("");
   const [banner, setBanner] = useState("");
+  const [timezone, setTimezone] = useState(DEFAULT_TIMEZONE);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState("");
@@ -34,6 +36,7 @@ export function EmailSettings() {
     const s = st.settings || {};
     setSignature(s.email_signature_html || SIG_DEFAULT);
     setBanner(s.email_banner_url || "");
+    setTimezone(s.site_timezone || DEFAULT_TIMEZONE);
     setLoading(false);
   }
   useEffect(() => {
@@ -75,11 +78,12 @@ export function EmailSettings() {
         settings: {
           email_signature_html: signature,
           email_banner_url: banner,
+          site_timezone: timezone,
         },
       }),
     });
     setSaving(false);
-    setSavedMsg("Saved — used on all composed & greeting mail.");
+    setSavedMsg("Saved — used on composed/greeting mail, scheduling & calendar.");
     setTimeout(() => setSavedMsg(""), 4000);
   }
 
@@ -186,6 +190,26 @@ export function EmailSettings() {
             placeholder="Your name, title, links…"
           />
         </div>
+      </section>
+
+      {/* Time zone */}
+      <section>
+        <h2 className="font-display text-lg font-semibold">Time zone</h2>
+        <p className="mt-1 text-sm text-muted">
+          Your preferred region. Scheduled emails send at this local time and
+          your calendar is shown in it. Defaults to India (IST).
+        </p>
+        <select
+          value={timezone}
+          onChange={(e) => setTimezone(e.target.value)}
+          className="mt-3 w-full max-w-sm rounded-md border border-line bg-card px-3 py-2 text-sm outline-none focus:border-foreground"
+        >
+          {TIMEZONES.map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
+          ))}
+        </select>
       </section>
 
       <div className="flex items-center gap-4">

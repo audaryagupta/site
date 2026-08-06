@@ -8,6 +8,8 @@ import {
   Link2,
   Unlink,
 } from "lucide-react";
+import { DEFAULT_TIMEZONE, tzLabel } from "@/lib/timezones";
+import { cx } from "@/lib/utils";
 
 interface CalEvent {
   id: string;
@@ -19,33 +21,31 @@ interface CalEvent {
   status: string;
 }
 
-const TZ = "Asia/Kolkata";
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-// y-m-d key of an ISO timestamp, in IST, so events land on the right day.
-function istDayKey(iso: string): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: TZ,
+// y-m-d key of an ISO timestamp, in the preferred zone, so events land on the
+// right day.
+function dayKey(iso: string, tz: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(new Date(iso));
-  return parts; // en-CA gives YYYY-MM-DD
 }
 
-function istTime(iso: string): string {
+function timeIn(iso: string, tz: string): string {
   return new Intl.DateTimeFormat("en-US", {
-    timeZone: TZ,
+    timeZone: tz,
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(iso));
 }
 
-// Turns a raw Google OAuth error into plain, actionable guidance.
 function explainGcalError(detail: string | null): string {
   const d = (detail || "").toLowerCase();
   if (d.includes("redirect_uri_mismatch"))
@@ -61,6 +61,12 @@ function explainGcalError(detail: string | null): string {
   return "Complete the Google consent screen and allow calendar access. If it keeps failing, check the redirect URI and consent-screen test users in Google Cloud.";
 }
 
+function ymd(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
+}
+
 export default function CalendarPage() {
   const [status, setStatus] = useState<{
     connected: boolean;
@@ -70,9 +76,11 @@ export default function CalendarPage() {
   const [events, setEvents] = useState<CalEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth()); // 0-based
+  const [tz, setTz] = useState(DEFAULT_TIMEZONE);
+  const [view, setView] = useState<"month" | "week">("month");
+  // `cursor` anchors both views (month view uses its month; week view the week
+  // that contains it).
+  const [cursor, setCursor] = useState(new Date());
 
   const banner =
     typeof window !== "undefined"
@@ -83,14 +91,36 @@ export default function CalendarPage() {
       ? new URLSearchParams(window.location.search).get("detail")
       : null;
 
+  useEffect(() => {
+    fetch("/api/admin/settings")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.settings?.site_timezone) setTz(d.settings.site_timezone);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Range to fetch depends on the view.
+  const range = (() => {
+    if (view === "week") {
+      const start = new Date(cursor);
+      start.setDate(start.getDate() - start.getDay());
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 7);
+      return { start, end };
+    }
+    const start = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+    const end = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    return { start, end };
+  })();
+
   const loadEvents = useCallback(async () => {
     setLoading(true);
     setError("");
-    const start = new Date(year, month, 1);
-    const end = new Date(year, month + 1, 1);
     try {
       const res = await fetch(
-        `/api/admin/calendar-events?start=${start.toISOString()}&end=${end.toISOString()}`
+        `/api/admin/calendar-events?start=${range.start.toISOString()}&end=${range.end.toISOString()}`
       );
       const data = await res.json();
       if (data.error) setError(data.error);
@@ -100,7 +130,8 @@ export default function CalendarPage() {
     } finally {
       setLoading(false);
     }
-  }, [year, month]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [range.start.getTime(), range.end.getTime()]);
 
   useEffect(() => {
     fetch("/api/admin/google")
@@ -121,44 +152,67 @@ export default function CalendarPage() {
     setEvents([]);
   }
 
-  function prevMonth() {
-    if (month === 0) {
-      setMonth(11);
-      setYear((y) => y - 1);
-    } else setMonth((m) => m - 1);
-  }
-  function nextMonth() {
-    if (month === 11) {
-      setMonth(0);
-      setYear((y) => y + 1);
-    } else setMonth((m) => m + 1);
+  function shift(dir: number) {
+    setCursor((c) => {
+      const n = new Date(c);
+      if (view === "week") n.setDate(n.getDate() + dir * 7);
+      else n.setMonth(n.getMonth() + dir);
+      return n;
+    });
   }
 
-  // Group events by IST day.
+  // Group events by day key.
   const byDay = new Map<string, CalEvent[]>();
   for (const e of events) {
-    const key = istDayKey(e.start);
+    const key = dayKey(e.start, tz);
     if (!byDay.has(key)) byDay.set(key, []);
     byDay.get(key)!.push(e);
   }
+  Array.from(byDay.values()).forEach((list) =>
+    list.sort((a, b) => a.start.localeCompare(b.start))
+  );
 
-  // Build the calendar grid (leading blanks + days of month).
-  const firstDow = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const cells: (number | null)[] = [];
+  const todayKey = dayKey(new Date().toISOString(), tz);
+
+  // Month grid cells.
+  const firstDow = new Date(cursor.getFullYear(), cursor.getMonth(), 1).getDay();
+  const daysInMonth = new Date(
+    cursor.getFullYear(),
+    cursor.getMonth() + 1,
+    0
+  ).getDate();
+  const cells: (Date | null)[] = [];
   for (let i = 0; i < firstDow; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  for (let d = 1; d <= daysInMonth; d++)
+    cells.push(new Date(cursor.getFullYear(), cursor.getMonth(), d));
   while (cells.length % 7 !== 0) cells.push(null);
 
-  const todayKey = istDayKey(new Date().toISOString());
+  // Week days.
+  const weekStart = new Date(cursor);
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  const weekDays: Date[] = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    return d;
+  });
+
+  const heading =
+    view === "week"
+      ? `Week of ${weekDays[0].toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        })} – ${weekDays[6].toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        })}`
+      : `${MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`;
 
   return (
     <div>
       <h1 className="font-display text-2xl font-semibold">Calendar</h1>
       <p className="mt-1 max-w-2xl text-sm text-muted">
-        Your Google Calendar, inside the console. Events are shown in IST
-        (Asia/Kolkata) across the calendars selected for conflict-checking on the
-        Appointments page.
+        Your Google Calendar, inside the console. Times shown in{" "}
+        {tzLabel(tz)} (change it in Studio → Email → Time zone).
       </p>
 
       {banner === "connected" && (
@@ -223,32 +277,56 @@ export default function CalendarPage() {
 
       {status?.connected && (
         <>
-          <div className="mt-6 flex items-center justify-between">
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <button
-                onClick={prevMonth}
+                onClick={() => shift(-1)}
                 className="rounded-md border border-line p-1.5 hover:bg-subtle"
-                aria-label="Previous month"
+                aria-label="Previous"
               >
                 <ChevronLeft size={16} />
               </button>
-              <span className="min-w-44 text-center font-display text-lg font-semibold">
-                {MONTHS[month]} {year}
+              <span className="min-w-52 text-center font-display text-lg font-semibold">
+                {heading}
               </span>
               <button
-                onClick={nextMonth}
+                onClick={() => shift(1)}
                 className="rounded-md border border-line p-1.5 hover:bg-subtle"
-                aria-label="Next month"
+                aria-label="Next"
               >
                 <ChevronRight size={16} />
               </button>
+              <button
+                onClick={() => setCursor(new Date())}
+                className="rounded-md border border-line px-2.5 py-1.5 text-xs hover:bg-subtle"
+              >
+                Today
+              </button>
             </div>
-            <button
-              onClick={disconnect}
-              className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-red-500"
-            >
-              <Unlink size={13} /> Disconnect
-            </button>
+            <div className="flex items-center gap-3">
+              <div className="flex overflow-hidden rounded-md border border-line text-xs">
+                {(["month", "week"] as const).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => setView(v)}
+                    className={cx(
+                      "px-3 py-1.5 capitalize",
+                      view === v
+                        ? "bg-foreground text-background"
+                        : "hover:bg-subtle"
+                    )}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={disconnect}
+                className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-red-500"
+              >
+                <Unlink size={13} /> Disconnect
+              </button>
+            </div>
           </div>
 
           {error && (
@@ -257,75 +335,119 @@ export default function CalendarPage() {
             </p>
           )}
 
-          <div className="mt-4 overflow-hidden rounded-lg border border-line bg-card">
-            <div className="grid grid-cols-7 border-b border-line text-center text-xs uppercase tracking-widest text-muted">
-              {WEEKDAYS.map((d) => (
-                <div key={d} className="py-2">
-                  {d}
-                </div>
-              ))}
+          {view === "month" ? (
+            <div className="mt-4 overflow-hidden rounded-lg border border-line bg-card">
+              <div className="grid grid-cols-7 border-b border-line text-center text-xs uppercase tracking-widest text-muted">
+                {WEEKDAYS.map((d) => (
+                  <div key={d} className="py-2">
+                    {d}
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7">
+                {cells.map((d, i) => {
+                  const key = d ? ymd(d) : "";
+                  const dayEvents = key ? byDay.get(key) || [] : [];
+                  const isToday = key === todayKey;
+                  return (
+                    <div
+                      key={i}
+                      className="min-h-24 border-b border-r border-line p-1.5 last:border-r-0 [&:nth-child(7n)]:border-r-0"
+                    >
+                      {d && (
+                        <>
+                          <div
+                            className={
+                              "mb-1 text-xs " +
+                              (isToday
+                                ? "flex h-5 w-5 items-center justify-center rounded-full bg-foreground font-semibold text-background"
+                                : "text-muted")
+                            }
+                          >
+                            {d.getDate()}
+                          </div>
+                          <div className="space-y-1">
+                            {dayEvents.slice(0, 4).map((e) => (
+                              <div
+                                key={e.id}
+                                title={`${e.title}${
+                                  e.location ? ` · ${e.location}` : ""
+                                }`}
+                                className="truncate rounded bg-subtle px-1.5 py-0.5 text-[11px]"
+                              >
+                                {!e.allDay && (
+                                  <span className="text-muted">
+                                    {timeIn(e.start, tz)}{" "}
+                                  </span>
+                                )}
+                                {e.title}
+                              </div>
+                            ))}
+                            {dayEvents.length > 4 && (
+                              <div className="px-1.5 text-[10px] text-muted">
+                                +{dayEvents.length - 4} more
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div className="grid grid-cols-7">
-              {cells.map((d, i) => {
-                const key =
-                  d != null
-                    ? `${year}-${String(month + 1).padStart(2, "0")}-${String(
-                        d
-                      ).padStart(2, "0")}`
-                    : "";
-                const dayEvents = key ? byDay.get(key) || [] : [];
+          ) : (
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-7">
+              {weekDays.map((d) => {
+                const key = ymd(d);
+                const dayEvents = byDay.get(key) || [];
                 const isToday = key === todayKey;
                 return (
                   <div
-                    key={i}
-                    className="min-h-24 border-b border-r border-line p-1.5 last:border-r-0 [&:nth-child(7n)]:border-r-0"
+                    key={key}
+                    className="min-h-40 rounded-lg border border-line bg-card p-2"
                   >
-                    {d != null && (
-                      <>
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-xs uppercase tracking-wide text-muted">
+                        {WEEKDAYS[d.getDay()]}
+                      </span>
+                      <span
+                        className={
+                          "text-xs " +
+                          (isToday
+                            ? "flex h-5 w-5 items-center justify-center rounded-full bg-foreground font-semibold text-background"
+                            : "text-muted")
+                        }
+                      >
+                        {d.getDate()}
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      {dayEvents.length === 0 && (
+                        <p className="text-[11px] text-muted/60">—</p>
+                      )}
+                      {dayEvents.map((e) => (
                         <div
-                          className={
-                            "mb-1 text-xs " +
-                            (isToday
-                              ? "flex h-5 w-5 items-center justify-center rounded-full bg-foreground font-semibold text-background"
-                              : "text-muted")
-                          }
+                          key={e.id}
+                          title={`${e.title}${
+                            e.location ? ` · ${e.location}` : ""
+                          }`}
+                          className="rounded bg-subtle px-1.5 py-1 text-[11px]"
                         >
-                          {d}
-                        </div>
-                        <div className="space-y-1">
-                          {dayEvents.slice(0, 4).map((e) => (
-                            <div
-                              key={e.id}
-                              title={`${e.title}${
-                                e.location ? ` · ${e.location}` : ""
-                              }`}
-                              className="truncate rounded bg-subtle px-1.5 py-0.5 text-[11px]"
-                            >
-                              {!e.allDay && (
-                                <span className="text-muted">
-                                  {istTime(e.start)}{" "}
-                                </span>
-                              )}
-                              {e.title}
-                            </div>
-                          ))}
-                          {dayEvents.length > 4 && (
-                            <div className="px-1.5 text-[10px] text-muted">
-                              +{dayEvents.length - 4} more
-                            </div>
+                          {!e.allDay && (
+                            <div className="text-muted">{timeIn(e.start, tz)}</div>
                           )}
+                          <div className="truncate font-medium">{e.title}</div>
                         </div>
-                      </>
-                    )}
+                      ))}
+                    </div>
                   </div>
                 );
               })}
             </div>
-          </div>
-
-          {loading && (
-            <p className="mt-3 text-sm text-muted">Loading events…</p>
           )}
+
+          {loading && <p className="mt-3 text-sm text-muted">Loading events…</p>}
         </>
       )}
     </div>
