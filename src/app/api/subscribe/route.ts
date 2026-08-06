@@ -12,7 +12,7 @@ const schema = z.object({
 });
 
 async function sendWelcome(email: string, firstName: string, unsubToken: string) {
-  if (!emailConfigured()) return;
+  if (!(await emailConfigured())) return;
   const hi = firstName ? ` ${escapeHtml(firstName)}` : "";
   try {
     await sendEmail({

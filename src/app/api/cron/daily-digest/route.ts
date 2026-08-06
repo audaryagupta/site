@@ -22,7 +22,7 @@ async function run(req: Request) {
   if (!authorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!emailConfigured() || !process.env.ADMIN_EMAIL) {
+  if (!(await emailConfigured()) || !process.env.ADMIN_EMAIL) {
     return NextResponse.json({ ok: true, skipped: "email not configured" });
   }
 

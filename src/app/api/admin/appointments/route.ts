@@ -103,7 +103,7 @@ export async function POST(req: Request) {
     },
   });
 
-  if (emailConfigured()) {
+  if (await emailConfigured()) {
     const details =
       data.mode === "physical"
         ? `<p><strong>Where:</strong> ${escapeHtml(location || "TBC")}</p>`

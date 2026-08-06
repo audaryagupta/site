@@ -94,7 +94,7 @@ export async function PATCH(
           /* ignore calendar errors */
         }
       }
-      if (emailConfigured()) {
+      if (await emailConfigured()) {
         try {
           await sendEmail({
             to: updated.email,
@@ -127,7 +127,7 @@ export async function PATCH(
       where: { id: params.id },
       data: { status: "rejected" },
     });
-    if (emailConfigured()) {
+    if (await emailConfigured()) {
       try {
         await sendEmail({
           to: appt.email,
@@ -159,7 +159,7 @@ export async function PATCH(
       "appointment.cancelled",
       `${appt.name} — ${formatDateTime(appt.requestedStart)} IST`
     );
-    if (emailConfigured()) {
+    if (await emailConfigured()) {
       try {
         await sendEmail({
           to: appt.email,
@@ -243,7 +243,7 @@ export async function PATCH(
     `${appt.name} — ${formatDateTime(appt.requestedStart)} IST (${appt.mode})`
   );
 
-  if (emailConfigured()) {
+  if (await emailConfigured()) {
     const details =
       appt.mode === "physical"
         ? `<p><strong>Where:</strong> ${escapeHtml(location)}</p>`

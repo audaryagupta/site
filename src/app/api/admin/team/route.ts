@@ -54,7 +54,7 @@ export async function POST(req: Request) {
   await logActivity("team.invited", e);
 
   let emailed = false;
-  if (emailConfigured()) {
+  if (await emailConfigured()) {
     try {
       await sendEmail({
         to: e,

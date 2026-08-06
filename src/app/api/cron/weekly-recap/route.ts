@@ -56,7 +56,7 @@ async function run(req: Request) {
   });
 
   // Notify Audarya to review & approve.
-  if (emailConfigured() && process.env.ADMIN_EMAIL) {
+  if (await emailConfigured() && process.env.ADMIN_EMAIL) {
     try {
       await sendEmail({
         to: process.env.ADMIN_EMAIL,

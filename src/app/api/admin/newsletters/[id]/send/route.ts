@@ -18,7 +18,7 @@ export async function POST(
   const g = await guard();
   if (g) return g;
 
-  if (!emailConfigured()) {
+  if (!(await emailConfigured())) {
     return NextResponse.json(
       { error: "SMTP (Google Workspace) email is not configured yet." },
       { status: 400 }

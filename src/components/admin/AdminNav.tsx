@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useState } from "react";
 import {
+  AtSign,
   BarChart3,
   BookOpen,
   CalendarDays,
@@ -19,6 +20,7 @@ import {
   PenLine,
   Rocket,
   ScrollText,
+  Send,
   Settings,
   Sparkles,
   Target,
@@ -52,6 +54,7 @@ const groups: NavGroup[] = [
     links: [
       { href: "/admin/writings", label: "Writings", icon: PenLine },
       { href: "/admin/newsletters", label: "Newsletters", icon: Mail },
+      { href: "/admin/compose", label: "Compose email", icon: Send },
       { href: "/admin/now", label: "Now page", icon: Sparkles },
       { href: "/admin/site-text", label: "Site text", icon: Type, ownerOnly: true },
       { href: "/admin/games", label: "Games", icon: Gamepad2 },
@@ -99,6 +102,7 @@ const groups: NavGroup[] = [
     label: "Admin",
     icon: Settings,
     links: [
+      { href: "/admin/email", label: "Email", icon: AtSign, ownerOnly: true },
       { href: "/admin/access", label: "Access", icon: UserCog, ownerOnly: true },
       { href: "/admin/launch", label: "Launch", icon: Rocket, ownerOnly: true },
       { href: "/admin/settings", label: "Settings", icon: Settings },

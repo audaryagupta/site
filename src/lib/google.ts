@@ -138,6 +138,172 @@ export async function disconnectCalendar() {
   await prisma.setting.deleteMany({ where: { key: "gcal_refresh_token" } });
 }
 
+// ---- Gmail sending (two mailboxes) -----------------------------------------
+//
+// The site can connect two Google mailboxes for OUTGOING email:
+//   "mass"     — no-reply / bulk mail (newsletters, digests): mail@byaudarya.com
+//   "personal" — mail Audarya sends deliberately (greetings, the composer):
+//                audarya@byaudarya.com
+// Each is authorized independently via OAuth and sent through the Gmail API, so
+// no SMTP app passwords are needed. Reuses the same OAuth client + callback as
+// calendar; the connect flow tags the request with a `state` so the callback
+// knows which mailbox it is.
+
+export type MailRole = "mass" | "personal";
+
+// gmail.send is a Google "restricted" scope, but sending from your own account
+// while signed in as a test user works. openid + email lets us read back which
+// address was connected so we can label it and set the From header correctly.
+export const GMAIL_SCOPES = [
+  "https://www.googleapis.com/auth/gmail.send",
+  "openid",
+  "https://www.googleapis.com/auth/userinfo.email",
+];
+
+function gmailKeys(role: MailRole) {
+  return { token: `gmail_${role}_token`, email: `gmail_${role}_email` };
+}
+
+/** Consent URL to connect one mailbox for sending. */
+export function gmailConsentUrl(role: MailRole): string {
+  return newOAuthClient().generateAuthUrl({
+    access_type: "offline",
+    prompt: "consent",
+    include_granted_scopes: true,
+    scope: GMAIL_SCOPES,
+    state: `gmail:${role}`,
+  });
+}
+
+export async function getGmailAccount(
+  role: MailRole
+): Promise<{ refreshToken: string; email: string } | null> {
+  const keys = gmailKeys(role);
+  const rows = await prisma.setting.findMany({
+    where: { key: { in: [keys.token, keys.email] } },
+  });
+  const map: Record<string, string> = {};
+  for (const r of rows) map[r.key] = r.value;
+  const refreshToken = (map[keys.token] || "").trim();
+  if (!refreshToken) return null;
+  return { refreshToken, email: (map[keys.email] || "").trim() };
+}
+
+function emailFromIdToken(idToken: string | null | undefined): string {
+  if (!idToken) return "";
+  try {
+    const payload = JSON.parse(
+      Buffer.from(idToken.split(".")[1], "base64url").toString("utf8")
+    ) as { email?: string };
+    return (payload.email || "").toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+/** Exchange the OAuth code and store the refresh token for `role`. */
+export async function connectGmailFromCode(
+  code: string,
+  role: MailRole
+): Promise<{ ok: boolean; email: string }> {
+  const client = newOAuthClient();
+  const { tokens } = await client.getToken(code);
+  const email = emailFromIdToken(tokens.id_token);
+  const keys = gmailKeys(role);
+
+  if (!tokens.refresh_token) {
+    const existing = await getGmailAccount(role);
+    return { ok: Boolean(existing), email: existing?.email || email };
+  }
+  await prisma.setting.upsert({
+    where: { key: keys.token },
+    update: { value: tokens.refresh_token },
+    create: { key: keys.token, value: tokens.refresh_token },
+  });
+  if (email) {
+    await prisma.setting.upsert({
+      where: { key: keys.email },
+      update: { value: email },
+      create: { key: keys.email, value: email },
+    });
+  }
+  return { ok: true, email };
+}
+
+export async function disconnectGmail(role: MailRole) {
+  const keys = gmailKeys(role);
+  await prisma.setting.deleteMany({ where: { key: { in: [keys.token, keys.email] } } });
+}
+
+function encodeHeaderWord(value: string): string {
+  // RFC 2047 encode a header value when it contains non-ASCII characters.
+  if (/^[\x00-\x7F]*$/.test(value)) return value;
+  return `=?UTF-8?B?${Buffer.from(value, "utf8").toString("base64")}?=`;
+}
+
+/** Keep the display name from `from` but force the address to `address`. */
+function withAddress(from: string, address: string): string {
+  const name = from.replace(/<[^>]*>/, "").replace(/["]/g, "").trim() || "Audarya Gupta";
+  return `${encodeHeaderWord(name)} <${address}>`;
+}
+
+interface GmailMessage {
+  to: string;
+  subject: string;
+  html: string;
+  text?: string;
+  replyTo?: string;
+  from?: string;
+}
+
+function buildRawMessage(from: string, m: GmailMessage): string {
+  const boundary = `b_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
+  const text = m.text || m.html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const headers = [
+    `From: ${from}`,
+    `To: ${m.to}`,
+    m.replyTo ? `Reply-To: ${m.replyTo}` : "",
+    `Subject: ${encodeHeaderWord(m.subject)}`,
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+  ]
+    .filter(Boolean)
+    .join("\r\n");
+  const body = [
+    `--${boundary}`,
+    'Content-Type: text/plain; charset="UTF-8"',
+    "Content-Transfer-Encoding: base64",
+    "",
+    Buffer.from(text, "utf8").toString("base64"),
+    `--${boundary}`,
+    'Content-Type: text/html; charset="UTF-8"',
+    "Content-Transfer-Encoding: base64",
+    "",
+    Buffer.from(m.html, "utf8").toString("base64"),
+    `--${boundary}--`,
+    "",
+  ].join("\r\n");
+  return `${headers}\r\n\r\n${body}`;
+}
+
+/** Send one message through the Gmail API using the mailbox for `role`. */
+export async function sendGmailMessage(role: MailRole, m: GmailMessage) {
+  const account = await getGmailAccount(role);
+  if (!account) throw new Error(`Gmail mailbox (${role}) is not connected`);
+  const oauth2 = newOAuthClient();
+  oauth2.setCredentials({ refresh_token: account.refreshToken });
+  const gmail = google.gmail({ version: "v1", auth: oauth2 });
+
+  const from = withAddress(m.from || "Audarya Gupta", account.email);
+  const raw = Buffer.from(buildRawMessage(from, m), "utf8")
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+
+  return gmail.users.messages.send({ userId: "me", requestBody: { raw } });
+}
+
 async function getOAuthClient() {
   const oauth2 = newOAuthClient();
   oauth2.setCredentials({ refresh_token: await getRefreshToken() });

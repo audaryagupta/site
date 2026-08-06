@@ -64,7 +64,7 @@ export async function POST(req: Request) {
       },
     });
 
-    if (emailConfigured()) {
+    if (await emailConfigured()) {
       // Notify the admin
       if (process.env.ADMIN_EMAIL) {
         try {

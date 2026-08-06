@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       data: { status: "cancelled" },
     });
 
-    if (emailConfigured() && process.env.ADMIN_EMAIL) {
+    if (await emailConfigured() && process.env.ADMIN_EMAIL) {
       try {
         await sendEmail({
           to: process.env.ADMIN_EMAIL,
