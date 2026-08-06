@@ -8,10 +8,12 @@ import { ArticleEngagement } from "@/components/ArticleEngagement";
 import { ArticleAudio } from "@/components/ArticleAudio";
 import { ArticleCard } from "@/components/ArticleCard";
 import { Comments } from "@/components/Comments";
+import { JsonLd } from "@/components/JsonLd";
 import { getArticleBySlug, getRelatedArticles } from "@/lib/queries";
 import { formatDate } from "@/lib/utils";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { site } from "@/lib/site";
+import { jsonLdGraph, articleSchema } from "@/lib/seo";
 
 export const revalidate = 60;
 
@@ -25,10 +27,12 @@ export async function generateMetadata({
   return {
     title: article.seoTitle || article.title,
     description: article.seoDescription || article.excerpt,
+    alternates: { canonical: `/writings/${article.slug}` },
     openGraph: {
       title: article.title,
       description: article.excerpt,
       type: "article",
+      url: `/writings/${article.slug}`,
       images: article.coverImage ? [{ url: article.coverImage }] : undefined,
     },
   };
@@ -49,6 +53,18 @@ export default async function ArticlePage({
 
   return (
     <article>
+      <JsonLd
+        data={jsonLdGraph(
+          articleSchema({
+            title: article.title,
+            description: article.excerpt,
+            slug: article.slug,
+            publishedAt: article.publishedAt,
+            updatedAt: article.updatedAt,
+            coverImage: article.coverImage,
+          })
+        )}
+      />
 
       {/* Header */}
       <Container className="max-w-3xl pt-14 text-center">

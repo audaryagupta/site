@@ -11,6 +11,7 @@ export const metadata: Metadata = {
   title: "My Writings",
   description:
     "Essays on finance, business, technology, geopolitics and more by Audarya Gupta.",
+  alternates: { canonical: "/writings" },
 };
 
 export default async function WritingsPage({

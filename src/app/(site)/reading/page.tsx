@@ -7,6 +7,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "Now",
   description: "What Audarya is reading, watching and thinking about right now.",
+  alternates: { canonical: "/reading" },
 };
 
 const CATEGORY_LABELS: Record<string, string> = {

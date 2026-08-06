@@ -11,6 +11,7 @@ export const metadata: Metadata = {
   title: "Newsletter — The Weekly Recap",
   description:
     "The week's ten best stories in finance, business and tech, every week.",
+  alternates: { canonical: "/newsletter" },
 };
 
 export default async function NewsletterPage() {

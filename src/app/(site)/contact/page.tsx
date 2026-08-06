@@ -10,6 +10,7 @@ import { site } from "@/lib/site";
 export const metadata: Metadata = {
   title: "Contact",
   description: "Get in touch with Audarya Gupta or book an appointment.",
+  alternates: { canonical: "/contact" },
 };
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];

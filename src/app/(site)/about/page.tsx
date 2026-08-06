@@ -11,6 +11,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "About Me",
   description: "About Audarya Gupta — writer, founder, and lifelong learner.",
+  alternates: { canonical: "/about" },
 };
 
 const DEFAULT_BIO = `Hi, I’m Audarya — someone who has always been fascinated by the forces that drive economies, shape global affairs, and influence financial markets. My curiosity about finance, geopolitics, and history led me to take a gap year after my 12th grade and go down the exploration road. In the past I've interned at organizations like the Government of India, Hindustan Times, and Gulf News Dubai, gaining insights into finance, media, and governance along the way.
