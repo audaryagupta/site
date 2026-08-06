@@ -75,3 +75,26 @@ export function zonedWallTimeToUtc(local: string, timeZone: string): Date {
   const offset = tzOffsetMinutes(timeZone, naive);
   return new Date(naive.getTime() - offset * 60000);
 }
+
+/**
+ * Inverse of `zonedWallTimeToUtc`: render an absolute instant as the
+ * "YYYY-MM-DDTHH:mm" wall-clock string it maps to in `timeZone` — suitable for
+ * pre-filling a `datetime-local` input.
+ */
+export function utcToZonedWallTime(iso: string | Date, timeZone: string): string {
+  const date = typeof iso === "string" ? new Date(iso) : iso;
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(date);
+  const map: Record<string, string> = {};
+  for (const p of parts) map[p.type] = p.value;
+  const hour = map.hour === "24" ? "00" : map.hour;
+  return `${map.year}-${map.month}-${map.day}T${hour}:${map.minute}`;
+}

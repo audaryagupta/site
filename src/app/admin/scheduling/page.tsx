@@ -8,8 +8,8 @@ import CalendarPage from "../calendar/page";
 import AvailabilityPage from "../availability/page";
 
 const TABS = [
-  { key: "appointments", label: "Appointments", icon: CalendarDays },
   { key: "calendar", label: "Calendar", icon: CalendarRange },
+  { key: "appointments", label: "Appointments", icon: CalendarDays },
   { key: "availability", label: "Availability", icon: CalendarClock },
 ] as const;
 
@@ -18,7 +18,7 @@ type TabKey = (typeof TABS)[number]["key"];
 // Scheduling brings the three related tools — appointment requests, the Google
 // calendar view, and recurring availability windows — under one roof.
 export default function SchedulingPage() {
-  const [tab, setTab] = useState<TabKey>("appointments");
+  const [tab, setTab] = useState<TabKey>("calendar");
 
   return (
     <div>

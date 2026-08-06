@@ -4,9 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { guard } from "@/lib/adminApi";
 
 const schema = z.object({
+  status: z.enum(["available", "unavailable"]).default("available"),
   kind: z.enum(["online", "offline"]).default("online"),
   city: z.string().trim().max(120).optional().default(""),
-  dayOfWeek: z.number().int().min(0).max(6),
+  // One or more weekdays (0=Sun … 6=Sat). `days` lets the admin duplicate a
+  // window across several weekdays in a single request.
+  days: z.array(z.number().int().min(0).max(6)).min(1).max(7),
   startTime: z.string().regex(/^\d{2}:\d{2}$/),
   endTime: z.string().regex(/^\d{2}:\d{2}$/),
   timezone: z.string().trim().max(60).optional().default("Asia/Kolkata"),
@@ -31,8 +34,12 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "Invalid window." }, { status: 400 });
   }
-  const window = await prisma.availability.create({ data });
-  return NextResponse.json({ window });
+  const { days, ...rest } = data;
+  const uniqueDays = Array.from(new Set(days));
+  await prisma.availability.createMany({
+    data: uniqueDays.map((dayOfWeek) => ({ ...rest, dayOfWeek })),
+  });
+  return NextResponse.json({ created: uniqueDays.length });
 }
 
 export async function DELETE(req: Request) {

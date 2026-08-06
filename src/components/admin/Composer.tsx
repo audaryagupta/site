@@ -141,7 +141,7 @@ export function Composer({ ownerEmail }: { ownerEmail: string }) {
     "w-full rounded-md border border-line bg-card px-3 py-2 text-sm outline-none focus:border-foreground";
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_16rem]">
       <div className="space-y-4">
         <RecipientInput
           people={people}
@@ -166,7 +166,7 @@ export function Composer({ ownerEmail }: { ownerEmail: string }) {
             <RichTextEditor
               value={body}
               onChange={setBody}
-              minHeight={280}
+              minHeight={360}
               placeholder="Write your message… it's wrapped in your branded template with the banner and signature."
             />
           </div>

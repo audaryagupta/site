@@ -104,7 +104,7 @@ export async function getSentNewsletters() {
 
 export async function getPublicAvailability() {
   return prisma.availability.findMany({
-    where: { active: true },
+    where: { active: true, status: "available" },
     orderBy: [{ kind: "asc" }, { dayOfWeek: "asc" }, { startTime: "asc" }],
   });
 }

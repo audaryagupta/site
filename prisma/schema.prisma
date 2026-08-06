@@ -149,6 +149,7 @@ model GreetingRequest {
 // visitors know where Audarya currently is. Times are IST-naive labels.
 model Availability {
   id        String   @id @default(cuid())
+  status    String   @default("available") // available | unavailable (blocked)
   kind      String   @default("online") // online | offline
   city      String   @default("")       // shown for offline windows
   dayOfWeek Int       @default(1)         // 0=Sun … 6=Sat

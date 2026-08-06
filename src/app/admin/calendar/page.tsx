@@ -6,19 +6,30 @@ import {
   ChevronLeft,
   ChevronRight,
   Link2,
+  MapPin,
+  Plus,
+  Trash2,
   Unlink,
+  X,
 } from "lucide-react";
-import { DEFAULT_TIMEZONE, tzLabel } from "@/lib/timezones";
+import {
+  DEFAULT_TIMEZONE,
+  tzLabel,
+  utcToZonedWallTime,
+  zonedWallTimeToUtc,
+} from "@/lib/timezones";
 import { cx } from "@/lib/utils";
 
 interface CalEvent {
   id: string;
   title: string;
+  description: string;
   start: string;
   end: string;
   allDay: boolean;
   location: string;
   status: string;
+  editable: boolean;
 }
 
 const MONTHS = [
@@ -46,6 +57,16 @@ function timeIn(iso: string, tz: string): string {
   }).format(new Date(iso));
 }
 
+function longDate(iso: string, tz: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(iso));
+}
+
 function explainGcalError(detail: string | null): string {
   const d = (detail || "").toLowerCase();
   if (d.includes("redirect_uri_mismatch"))
@@ -67,6 +88,11 @@ function ymd(d: Date): string {
   ).padStart(2, "0")}`;
 }
 
+type PanelState =
+  | { mode: "view"; event: CalEvent }
+  | { mode: "edit"; event: CalEvent }
+  | { mode: "create"; day: string };
+
 export default function CalendarPage() {
   const [status, setStatus] = useState<{
     connected: boolean;
@@ -81,6 +107,7 @@ export default function CalendarPage() {
   // `cursor` anchors both views (month view uses its month; week view the week
   // that contains it).
   const [cursor, setCursor] = useState(new Date());
+  const [panel, setPanel] = useState<PanelState | null>(null);
 
   const banner =
     typeof window !== "undefined"
@@ -186,6 +213,7 @@ export default function CalendarPage() {
   for (let d = 1; d <= daysInMonth; d++)
     cells.push(new Date(cursor.getFullYear(), cursor.getMonth(), d));
   while (cells.length % 7 !== 0) cells.push(null);
+  const weekRows = cells.length / 7;
 
   // Week days.
   const weekStart = new Date(cursor);
@@ -208,11 +236,12 @@ export default function CalendarPage() {
       : `${MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`;
 
   return (
-    <div>
+    <div className="flex min-h-[calc(100vh-9rem)] flex-col">
       <h1 className="font-display text-2xl font-semibold">Calendar</h1>
       <p className="mt-1 max-w-2xl text-sm text-muted">
-        Your Google Calendar, inside the console. Times shown in{" "}
-        {tzLabel(tz)} (change it in Studio → Email → Time zone).
+        Your Google Calendar, inside the console. Click an event to see details
+        or edit it, or click a day to add one. Times shown in {tzLabel(tz)}{" "}
+        (change it in Studio → Email → Time zone).
       </p>
 
       {banner === "connected" && (
@@ -304,6 +333,12 @@ export default function CalendarPage() {
               </button>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => setPanel({ mode: "create", day: todayKey })}
+                className="inline-flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background"
+              >
+                <Plus size={14} /> New event
+              </button>
               <div className="flex overflow-hidden rounded-md border border-line text-xs">
                 {(["month", "week"] as const).map((v) => (
                   <button
@@ -336,7 +371,7 @@ export default function CalendarPage() {
           )}
 
           {view === "month" ? (
-            <div className="mt-4 overflow-hidden rounded-lg border border-line bg-card">
+            <div className="mt-4 flex flex-1 flex-col overflow-hidden rounded-lg border border-line bg-card">
               <div className="grid grid-cols-7 border-b border-line text-center text-xs uppercase tracking-widest text-muted">
                 {WEEKDAYS.map((d) => (
                   <div key={d} className="py-2">
@@ -344,7 +379,12 @@ export default function CalendarPage() {
                   </div>
                 ))}
               </div>
-              <div className="grid grid-cols-7">
+              <div
+                className="grid flex-1 grid-cols-7"
+                style={{
+                  gridTemplateRows: `repeat(${weekRows}, minmax(6rem, 1fr))`,
+                }}
+              >
                 {cells.map((d, i) => {
                   const key = d ? ymd(d) : "";
                   const dayEvents = key ? byDay.get(key) || [] : [];
@@ -352,7 +392,13 @@ export default function CalendarPage() {
                   return (
                     <div
                       key={i}
-                      className="min-h-24 border-b border-r border-line p-1.5 last:border-r-0 [&:nth-child(7n)]:border-r-0"
+                      onClick={() =>
+                        d && setPanel({ mode: "create", day: key })
+                      }
+                      className={cx(
+                        "flex flex-col overflow-hidden border-b border-r border-line p-1.5 last:border-r-0 [&:nth-child(7n)]:border-r-0",
+                        d && "cursor-pointer hover:bg-subtle/40"
+                      )}
                     >
                       {d && (
                         <>
@@ -366,28 +412,17 @@ export default function CalendarPage() {
                           >
                             {d.getDate()}
                           </div>
-                          <div className="space-y-1">
-                            {dayEvents.slice(0, 4).map((e) => (
-                              <div
+                          <div className="flex-1 space-y-1 overflow-y-auto">
+                            {dayEvents.map((e) => (
+                              <EventChip
                                 key={e.id}
-                                title={`${e.title}${
-                                  e.location ? ` · ${e.location}` : ""
-                                }`}
-                                className="truncate rounded bg-subtle px-1.5 py-0.5 text-[11px]"
-                              >
-                                {!e.allDay && (
-                                  <span className="text-muted">
-                                    {timeIn(e.start, tz)}{" "}
-                                  </span>
-                                )}
-                                {e.title}
-                              </div>
+                                e={e}
+                                tz={tz}
+                                onClick={() =>
+                                  setPanel({ mode: "view", event: e })
+                                }
+                              />
                             ))}
-                            {dayEvents.length > 4 && (
-                              <div className="px-1.5 text-[10px] text-muted">
-                                +{dayEvents.length - 4} more
-                              </div>
-                            )}
                           </div>
                         </>
                       )}
@@ -397,7 +432,7 @@ export default function CalendarPage() {
               </div>
             </div>
           ) : (
-            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-7">
+            <div className="mt-4 grid flex-1 grid-cols-1 gap-2 sm:grid-cols-7">
               {weekDays.map((d) => {
                 const key = ymd(d);
                 const dayEvents = byDay.get(key) || [];
@@ -405,40 +440,44 @@ export default function CalendarPage() {
                 return (
                   <div
                     key={key}
-                    className="min-h-40 rounded-lg border border-line bg-card p-2"
+                    className="flex min-h-40 flex-col rounded-lg border border-line bg-card p-2"
                   >
                     <div className="mb-2 flex items-center justify-between">
                       <span className="text-xs uppercase tracking-wide text-muted">
                         {WEEKDAYS[d.getDay()]}
                       </span>
-                      <span
+                      <button
+                        onClick={() => setPanel({ mode: "create", day: key })}
                         className={
                           "text-xs " +
                           (isToday
                             ? "flex h-5 w-5 items-center justify-center rounded-full bg-foreground font-semibold text-background"
-                            : "text-muted")
+                            : "text-muted hover:text-foreground")
                         }
+                        title="Add event"
                       >
                         {d.getDate()}
-                      </span>
+                      </button>
                     </div>
-                    <div className="space-y-1">
+                    <div className="flex-1 space-y-1 overflow-y-auto">
                       {dayEvents.length === 0 && (
-                        <p className="text-[11px] text-muted/60">—</p>
+                        <button
+                          onClick={() =>
+                            setPanel({ mode: "create", day: key })
+                          }
+                          className="w-full rounded border border-dashed border-line py-2 text-[11px] text-muted/60 hover:border-foreground hover:text-foreground"
+                        >
+                          + add
+                        </button>
                       )}
                       {dayEvents.map((e) => (
-                        <div
+                        <EventChip
                           key={e.id}
-                          title={`${e.title}${
-                            e.location ? ` · ${e.location}` : ""
-                          }`}
-                          className="rounded bg-subtle px-1.5 py-1 text-[11px]"
-                        >
-                          {!e.allDay && (
-                            <div className="text-muted">{timeIn(e.start, tz)}</div>
-                          )}
-                          <div className="truncate font-medium">{e.title}</div>
-                        </div>
+                          e={e}
+                          tz={tz}
+                          block
+                          onClick={() => setPanel({ mode: "view", event: e })}
+                        />
                       ))}
                     </div>
                   </div>
@@ -450,6 +489,306 @@ export default function CalendarPage() {
           {loading && <p className="mt-3 text-sm text-muted">Loading events…</p>}
         </>
       )}
+
+      {panel && (
+        <EventPanel
+          panel={panel}
+          tz={tz}
+          onClose={() => setPanel(null)}
+          onSaved={() => {
+            setPanel(null);
+            loadEvents();
+          }}
+          onEdit={(event) => setPanel({ mode: "edit", event })}
+        />
+      )}
+    </div>
+  );
+}
+
+function EventChip({
+  e,
+  tz,
+  onClick,
+  block,
+}: {
+  e: CalEvent;
+  tz: string;
+  onClick: () => void;
+  block?: boolean;
+}) {
+  return (
+    <button
+      onClick={(ev) => {
+        ev.stopPropagation();
+        onClick();
+      }}
+      title={`${e.title}${e.location ? ` · ${e.location}` : ""}`}
+      className={cx(
+        "w-full rounded bg-subtle px-1.5 text-left text-[11px] hover:bg-foreground hover:text-background",
+        block ? "py-1" : "truncate py-0.5"
+      )}
+    >
+      {!e.allDay && (
+        <span className={block ? "block text-muted" : "text-muted"}>
+          {timeIn(e.start, tz)}{" "}
+        </span>
+      )}
+      <span className={block ? "block truncate font-medium" : ""}>
+        {e.title}
+      </span>
+    </button>
+  );
+}
+
+function EventPanel({
+  panel,
+  tz,
+  onClose,
+  onSaved,
+  onEdit,
+}: {
+  panel: PanelState;
+  tz: string;
+  onClose: () => void;
+  onSaved: () => void;
+  onEdit: (event: CalEvent) => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-lg border border-line bg-card p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-display text-lg font-semibold">
+            {panel.mode === "view"
+              ? "Event"
+              : panel.mode === "edit"
+              ? "Edit event"
+              : "New event"}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-muted hover:text-foreground"
+            aria-label="Close"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {panel.mode === "view" ? (
+          <EventDetails event={panel.event} tz={tz} onEdit={onEdit} onSaved={onSaved} />
+        ) : (
+          <EventForm
+            tz={tz}
+            event={panel.mode === "edit" ? panel.event : undefined}
+            day={panel.mode === "create" ? panel.day : undefined}
+            onSaved={onSaved}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EventDetails({
+  event,
+  tz,
+  onEdit,
+  onSaved,
+}: {
+  event: CalEvent;
+  tz: string;
+  onEdit: (event: CalEvent) => void;
+  onSaved: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+
+  async function remove() {
+    if (!confirm("Delete this event? Attendees will be notified.")) return;
+    setBusy(true);
+    await fetch(`/api/admin/calendar-events?id=${event.id}`, {
+      method: "DELETE",
+    });
+    setBusy(false);
+    onSaved();
+  }
+
+  return (
+    <div className="space-y-3 text-sm">
+      <p className="font-medium">{event.title}</p>
+      <p className="text-muted">
+        {event.allDay
+          ? `${longDate(event.start, tz)} · All day`
+          : `${longDate(event.start, tz)} · ${timeIn(event.start, tz)} – ${timeIn(
+              event.end,
+              tz
+            )}`}
+      </p>
+      {event.location && (
+        <p className="flex items-center gap-1.5 text-muted">
+          <MapPin size={14} /> {event.location}
+        </p>
+      )}
+      {event.description && (
+        <p className="whitespace-pre-wrap text-muted">{event.description}</p>
+      )}
+      {event.editable ? (
+        <div className="flex items-center gap-3 border-t border-line pt-3">
+          <button
+            onClick={() => onEdit(event)}
+            className="rounded-md bg-foreground px-4 py-2 text-sm text-background"
+          >
+            Edit
+          </button>
+          <button
+            onClick={remove}
+            disabled={busy}
+            className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-red-600 disabled:opacity-50"
+          >
+            <Trash2 size={14} /> Delete
+          </button>
+        </div>
+      ) : (
+        <p className="border-t border-line pt-3 text-xs text-muted">
+          This event lives on a calendar that can&apos;t be edited from here.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function EventForm({
+  tz,
+  event,
+  day,
+  onSaved,
+}: {
+  tz: string;
+  event?: CalEvent;
+  day?: string;
+  onSaved: () => void;
+}) {
+  const [title, setTitle] = useState(event?.title || "");
+  const [location, setLocation] = useState(event?.location || "");
+  const [description, setDescription] = useState(event?.description || "");
+  const [start, setStart] = useState(
+    event
+      ? utcToZonedWallTime(event.start, tz)
+      : `${day || ymd(new Date())}T10:00`
+  );
+  const [end, setEnd] = useState(
+    event
+      ? utcToZonedWallTime(event.end, tz)
+      : `${day || ymd(new Date())}T11:00`
+  );
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  async function save() {
+    if (!title.trim()) {
+      setErr("Add a title.");
+      return;
+    }
+    const startUtc = zonedWallTimeToUtc(start, tz);
+    const endUtc = zonedWallTimeToUtc(end, tz);
+    if (Number.isNaN(startUtc.getTime()) || Number.isNaN(endUtc.getTime())) {
+      setErr("Pick a valid date & time.");
+      return;
+    }
+    if (endUtc.getTime() <= startUtc.getTime()) {
+      setErr("End must be after start.");
+      return;
+    }
+    setBusy(true);
+    setErr("");
+    const body = {
+      id: event?.id,
+      title,
+      location,
+      description,
+      start: startUtc.toISOString(),
+      end: endUtc.toISOString(),
+    };
+    const res = await fetch("/api/admin/calendar-events", {
+      method: event ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setBusy(false);
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setErr(d.error || "Couldn't save.");
+      return;
+    }
+    onSaved();
+  }
+
+  const input =
+    "mt-1 w-full rounded-md border border-line bg-background px-3 py-2 text-sm outline-none focus:border-foreground";
+
+  return (
+    <div className="space-y-3 text-sm">
+      <label className="block">
+        <span className="text-xs font-medium text-muted">Title</span>
+        <input
+          className={input}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Event title"
+        />
+      </label>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className="text-xs font-medium text-muted">Start</span>
+          <input
+            type="datetime-local"
+            className={input}
+            value={start}
+            onChange={(e) => setStart(e.target.value)}
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs font-medium text-muted">End</span>
+          <input
+            type="datetime-local"
+            className={input}
+            value={end}
+            onChange={(e) => setEnd(e.target.value)}
+          />
+        </label>
+      </div>
+      <p className="text-xs text-muted">Times are in {tzLabel(tz)}.</p>
+      <label className="block">
+        <span className="text-xs font-medium text-muted">Location</span>
+        <input
+          className={input}
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          placeholder="Optional"
+        />
+      </label>
+      <label className="block">
+        <span className="text-xs font-medium text-muted">Notes</span>
+        <textarea
+          className={cx(input, "min-h-20 resize-y")}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Optional"
+        />
+      </label>
+      {err && <p className="text-sm text-red-600">{err}</p>}
+      <button
+        onClick={save}
+        disabled={busy}
+        className="w-full rounded-md bg-foreground px-4 py-2 text-sm text-background disabled:opacity-50"
+      >
+        {busy ? "Saving…" : event ? "Save changes" : "Create event"}
+      </button>
     </div>
   );
 }

@@ -317,12 +317,14 @@ export async function getCalendar() {
 export interface CalendarEventSummary {
   id: string;
   title: string;
+  description: string;
   start: string; // ISO
   end: string; // ISO
   allDay: boolean;
   location: string;
   status: string;
   calendar: string;
+  editable: boolean;
 }
 
 /**
@@ -334,7 +336,7 @@ export async function listEvents(
   timeMax: Date
 ): Promise<CalendarEventSummary[]> {
   const calendar = await getCalendar();
-  const { busyIds } = await getCalendarConfig();
+  const { busyIds, writeId } = await getCalendarConfig();
   const out: CalendarEventSummary[] = [];
 
   for (const calId of busyIds) {
@@ -354,12 +356,14 @@ export async function listEvents(
         out.push({
           id: e.id || "",
           title: e.summary || "(no title)",
+          description: e.description || "",
           start,
           end,
           allDay: Boolean(e.start?.date),
           location: e.location || "",
           status: e.status || "",
           calendar: calId,
+          editable: calId === writeId,
         });
       }
     } catch {
@@ -415,6 +419,35 @@ export async function createCalendarEvent(input: CalendarEventInput) {
     null;
 
   return { eventId: res.data.id, meetLink };
+}
+
+export interface CalendarEventPatch {
+  summary?: string;
+  description?: string;
+  location?: string;
+  start?: Date;
+  end?: Date;
+}
+
+/** Update fields of an existing event on the write calendar. */
+export async function updateCalendarEvent(
+  eventId: string,
+  patch: CalendarEventPatch
+) {
+  const calendar = await getCalendar();
+  const { writeId } = await getCalendarConfig();
+  await calendar.events.patch({
+    calendarId: writeId,
+    eventId,
+    sendUpdates: "all",
+    requestBody: {
+      summary: patch.summary,
+      description: patch.description,
+      location: patch.location,
+      start: patch.start ? { dateTime: patch.start.toISOString() } : undefined,
+      end: patch.end ? { dateTime: patch.end.toISOString() } : undefined,
+    },
+  });
 }
 
 /**
