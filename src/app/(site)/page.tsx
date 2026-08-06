@@ -4,12 +4,10 @@ import { ArrowRight, PenLine } from "lucide-react";
 import { Container } from "@/components/Container";
 import { SubscribeForm } from "@/components/SubscribeForm";
 import { LogoMark } from "@/components/Logo";
-import { JsonLd } from "@/components/JsonLd";
 import { EditableText } from "@/components/site-editor/EditableText";
 import { EditableButton } from "@/components/site-editor/EditableButton";
 import { getPublishedArticles, getUsedTopics } from "@/lib/queries";
 import { getSiteContent, pickText, pickButton } from "@/lib/siteContent";
-import { jsonLdGraph, websiteSchema, personSchema } from "@/lib/seo";
 import { formatDate } from "@/lib/utils";
 
 export const revalidate = 60;
@@ -47,7 +45,6 @@ export default async function HomePage() {
 
   return (
     <>
-      <JsonLd data={jsonLdGraph(websiteSchema(), personSchema())} />
       <section className="relative isolate overflow-hidden border-b border-line">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_10%,rgba(122,88,54,0.13),transparent_30%),linear-gradient(180deg,var(--background),var(--subtle))]" />
         <Container className="grid min-h-[74vh] gap-12 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:py-24">

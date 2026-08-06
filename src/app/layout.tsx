@@ -3,6 +3,7 @@ import { Inter, Lora } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { site } from "@/lib/site";
+import { jsonLdGraph, websiteSchema, personSchema } from "@/lib/seo";
 
 // Editorial/corporate system: Lora serif for display headings and long-form
 // prose (--font-display / --font-serif), Inter for UI and body sans text.
@@ -52,6 +53,12 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');}catch(e){}})();`,
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: jsonLdGraph(websiteSchema(), personSchema()),
           }}
         />
       </head>
