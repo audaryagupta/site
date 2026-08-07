@@ -6,15 +6,6 @@ import { formatDate } from "@/lib/utils";
 
 export const revalidate = 60;
 
-const CAT_COLOR: Record<string, string> = {
-  finance: "#047857",
-  business: "#b45309",
-  tech: "#1d4ed8",
-  technology: "#1d4ed8",
-};
-function catColor(name?: string) {
-  return CAT_COLOR[(name || "").trim().toLowerCase()] || "#7c3aed";
-}
 function recapLink(title: string, url?: string) {
   const u = (url || "").trim();
   if (/^https?:\/\//i.test(u)) return u;
@@ -128,17 +119,11 @@ export default async function NowPage() {
                 key={s.rank}
                 className="flex gap-4 border-b border-line pb-6 last:border-0"
               >
-                <span
-                  className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
-                  style={{ backgroundColor: catColor(s.category) }}
-                >
+                <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-semibold text-background">
                   {s.rank}
                 </span>
                 <div className="min-w-0">
-                  <p
-                    className="text-[11px] font-medium uppercase tracking-widest"
-                    style={{ color: catColor(s.category) }}
-                  >
+                  <p className="text-[11px] font-medium uppercase tracking-widest text-muted">
                     {s.category} · {s.region}
                   </p>
                   <a
@@ -152,14 +137,11 @@ export default async function NowPage() {
                   <p className="mt-1.5 font-serif leading-relaxed text-muted">
                     {s.summary}
                   </p>
-                  <a
-                    href={recapLink(s.title, s.url)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="link-underline mt-2 inline-block text-sm text-muted hover:text-foreground"
-                  >
-                    Read the full story{s.source ? ` · ${s.source}` : ""} →
-                  </a>
+                  {s.source && (
+                    <p className="mt-2 text-[11px] text-muted">
+                      Source: {s.source}
+                    </p>
+                  )}
                 </div>
               </li>
             ))}

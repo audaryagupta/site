@@ -120,6 +120,7 @@ model Appointment {
   purpose        String   @default("")
   title          String   @default("") // optional meeting name, shown on the calendar & emails
   isGroup        Boolean  @default(false) // group meeting vs 1:1
+  guests         String   @default("") // comma-separated extra attendee emails (group meetings)
   mode           String   @default("meet") // meet | physical
   requestedStart DateTime
   requestedEnd   DateTime

@@ -11,6 +11,7 @@ interface Appt {
   purpose: string;
   title: string;
   isGroup: boolean;
+  guests: string;
   mode: string;
   requestedStart: string;
   requestedEnd: string;
@@ -31,6 +32,7 @@ const EMPTY_INVITE = {
   email: "",
   title: "",
   isGroup: false,
+  guests: [] as string[],
   mode: "meet",
   date: "",
   time: "",
@@ -66,6 +68,23 @@ export default function AppointmentsPage() {
   const [showInvite, setShowInvite] = useState(false);
   const [invite, setInvite] = useState({ ...EMPTY_INVITE });
   const [inviteMsg, setInviteMsg] = useState("");
+  const [guestInput, setGuestInput] = useState("");
+
+  function commitGuests(raw: string) {
+    const parts = raw
+      .split(/[,\s]+/)
+      .map((p) => p.trim().toLowerCase())
+      .filter((p) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(p));
+    if (!parts.length) return;
+    setInvite((v) => ({
+      ...v,
+      guests: Array.from(new Set([...v.guests, ...parts])),
+    }));
+    setGuestInput("");
+  }
+  function removeGuest(email: string) {
+    setInvite((v) => ({ ...v, guests: v.guests.filter((g) => g !== email) }));
+  }
 
   // Calendar sync
   const [calendars, setCalendars] = useState<CalendarItem[]>([]);
@@ -191,10 +210,22 @@ export default function AppointmentsPage() {
     e.preventDefault();
     setBusy("invite");
     setInviteMsg("");
+    // Fold in any email still typed in the guest box.
+    const typed = guestInput
+      .split(/[,\s]+/)
+      .map((p) => p.trim().toLowerCase())
+      .filter((p) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(p));
+    const guests = invite.isGroup
+      ? Array.from(new Set([...invite.guests, ...typed]))
+      : [];
     const res = await fetch("/api/admin/appointments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...invite, duration: Number(invite.duration) }),
+      body: JSON.stringify({
+        ...invite,
+        guests,
+        duration: Number(invite.duration),
+      }),
     });
     const data = await res.json();
     setBusy(null);
@@ -205,6 +236,7 @@ export default function AppointmentsPage() {
     if (data.warnings?.length) setInviteMsg(data.warnings.join(" "));
     else setInviteMsg("Invite sent.");
     setInvite({ ...EMPTY_INVITE });
+    setGuestInput("");
     load();
   }
 
@@ -432,6 +464,58 @@ export default function AppointmentsPage() {
               />
               Group meeting with Audarya
             </label>
+            {invite.isGroup && (
+              <div className="sm:col-span-2">
+                <span className="mb-1 block text-xs uppercase tracking-widest text-muted">
+                  Guests (add multiple)
+                </span>
+                <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-line bg-background px-2 py-1.5">
+                  {invite.guests.map((g) => (
+                    <span
+                      key={g}
+                      className="inline-flex items-center gap-1 rounded-full bg-subtle px-2 py-0.5 text-xs"
+                    >
+                      {g}
+                      <button
+                        type="button"
+                        onClick={() => removeGuest(g)}
+                        className="text-muted hover:text-foreground"
+                        aria-label={`Remove ${g}`}
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ))}
+                  <input
+                    className="min-w-[8rem] flex-1 bg-transparent px-1 py-0.5 text-sm outline-none"
+                    placeholder="Add guest email, press Enter"
+                    value={guestInput}
+                    onChange={(e) => setGuestInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (
+                        e.key === "Enter" ||
+                        e.key === "," ||
+                        e.key === " "
+                      ) {
+                        e.preventDefault();
+                        commitGuests(guestInput);
+                      } else if (
+                        e.key === "Backspace" &&
+                        !guestInput &&
+                        invite.guests.length
+                      ) {
+                        removeGuest(invite.guests[invite.guests.length - 1]);
+                      }
+                    }}
+                    onBlur={() => commitGuests(guestInput)}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-muted">
+                  Everyone here is added to the Google Calendar event & Meet
+                  invite.
+                </p>
+              </div>
+            )}
             <select
               className={input}
               value={invite.duration}
@@ -599,6 +683,11 @@ export default function AppointmentsPage() {
                         {a.email}
                         {a.phone ? ` · ${a.phone}` : ""}
                       </p>
+                      {a.guests && (
+                        <p className="mt-1 text-sm text-muted">
+                          + {a.guests}
+                        </p>
+                      )}
                       <p className="mt-1 text-sm">{fmt(a.requestedStart)}</p>
                       {a.purpose && (
                         <p className="mt-2 max-w-lg text-sm text-muted">
@@ -698,6 +787,9 @@ export default function AppointmentsPage() {
                           <p className="mt-0.5 font-medium">{a.title}</p>
                         )}
                         <p className="mt-1 text-muted">{fmt(a.requestedStart)}</p>
+                        {a.guests && (
+                          <p className="mt-0.5 text-muted">+ {a.guests}</p>
+                        )}
                         {a.location && (
                           <p className="mt-0.5 text-muted">📍 {a.location}</p>
                         )}

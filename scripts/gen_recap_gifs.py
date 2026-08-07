@@ -1,9 +1,11 @@
 """Generates small, tasteful animated GIFs for the Weekly Recap email.
 
 Run once: `python3 scripts/gen_recap_gifs.py`. Output goes to public/newsletter/.
-Each theme gets a playful header banner + a shimmer divider bar. They are kept
-deliberately subtle (soft backgrounds, a single accent hue) so the email feels
-lively without looking gaudy. Committed to the repo so emails can hot-link them.
+One header banner per week-*mood* (slow / interesting / busy / heavy) plus one
+shimmer divider. The palette is strictly black/white + cream — no colour — so
+all the colour in the newsletter comes from the article photographs. Each mood
+animates at a different tempo so the header quietly signals the week's tone.
+Committed to the repo so emails can hot-link them.
 """
 import math
 import os
@@ -18,12 +20,18 @@ W = 600
 H = 132
 FRAMES = 18
 
-# (name, accent, soft-bg, style)
+CREAM = (250, 248, 243)
+INK = (23, 22, 20)
+CHARCOAL = (60, 58, 54)
+
+# (name/mood, accent, soft-bg, style) — monochrome only. Tempo/style differs
+# per mood: slow = calm bubbles, interesting = sparkles, busy = fast streaks,
+# heavy = a somber slow drift.
 THEMES = [
-    ("warm", (194, 65, 12), (255, 243, 234), "confetti"),
-    ("blue", (29, 78, 216), (234, 240, 255), "bubbles"),
-    ("green", (4, 120, 87), (231, 246, 239), "sparkles"),
-    ("violet", (124, 58, 237), (241, 234, 254), "streaks"),
+    ("slow", CHARCOAL, CREAM, "bubbles"),
+    ("interesting", INK, CREAM, "sparkles"),
+    ("busy", INK, CREAM, "streaks"),
+    ("heavy", INK, (238, 236, 231), "confetti"),
 ]
 
 
@@ -112,19 +120,20 @@ def build_header(name, accent, soft, style):
     print("wrote", path, os.path.getsize(path), "bytes")
 
 
-def build_divider(name, accent, soft):
+def build_divider():
+    """One monochrome shimmer bar shared by every issue (ink on cream)."""
     dw, dh = 600, 6
     frames = []
     for i in range(FRAMES):
-        img = Image.new("RGB", (dw, dh), soft)
+        img = Image.new("RGB", (dw, dh), CREAM)
         d = ImageDraw.Draw(img)
         head = int((i / FRAMES) * (dw + 120)) - 60
         for x in range(dw):
             dist = abs(x - head)
             t = max(0.0, 1 - dist / 90)
-            d.line([x, 0, x, dh], fill=lerp(soft, accent, 0.25 + 0.75 * t))
+            d.line([x, 0, x, dh], fill=lerp(CREAM, INK, 0.2 + 0.7 * t))
         frames.append(img.convert("P", palette=Image.ADAPTIVE, colors=32))
-    path = os.path.join(OUT, f"divider-{name}.gif")
+    path = os.path.join(OUT, "divider.gif")
     frames[0].save(path, save_all=True, append_images=frames[1:],
                    duration=80, loop=0, optimize=True, disposal=2)
     print("wrote", path, os.path.getsize(path), "bytes")
@@ -132,5 +141,5 @@ def build_divider(name, accent, soft):
 
 for name, accent, soft, style in THEMES:
     build_header(name, accent, soft, style)
-    build_divider(name, accent, soft)
+build_divider()
 print("done")

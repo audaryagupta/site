@@ -54,6 +54,15 @@ function calendarSummary(appt: {
   return `${appt.isGroup ? "Group meeting" : "Meeting"} with ${appt.name}`;
 }
 
+// Primary guest plus any extra group-meeting attendees.
+function attendeesFor(appt: { email: string; guests: string }): string[] {
+  const extra = appt.guests
+    .split(",")
+    .map((g) => g.trim())
+    .filter(Boolean);
+  return Array.from(new Set([appt.email, ...extra]));
+}
+
 export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
@@ -124,7 +133,7 @@ export async function PATCH(
             description: updated.purpose,
             start: updated.requestedStart,
             end: updated.requestedEnd,
-            attendees: [updated.email],
+            attendees: attendeesFor(updated),
             location: updated.location || undefined,
             createMeet: updated.mode !== "physical",
           });
@@ -148,7 +157,7 @@ export async function PATCH(
             `/appointments/cancel?token=${updated.cancelToken}`
           );
           await sendAppointmentEmail({
-            to: updated.email,
+            to: attendeesFor(updated).join(", "),
             subject: "Your meeting with Audarya has been updated",
             preheader: `Updated to ${formatDateTimeInTz(updated.requestedStart, updated.timezone)}`,
             bodyHtml: `<p>Hi ${escapeHtml(updated.name)},</p>
@@ -222,7 +231,7 @@ ${emailButtonRow([emailButton(bookUrl, "Book another time")])}`,
       try {
         const bookUrl = absoluteUrl("/appointments");
         await sendAppointmentEmail({
-          to: appt.email,
+          to: attendeesFor(appt).join(", "),
           subject: "Your meeting with Audarya has been cancelled",
           preheader: "You can book another time whenever you like.",
           bodyHtml: `<p>Hi ${escapeHtml(appt.name)},</p>
@@ -268,7 +277,7 @@ ${emailButtonRow([emailButton(bookUrl, "Book another time")])}`,
         description: appt.purpose,
         start: appt.requestedStart,
         end: appt.requestedEnd,
-        attendees: [appt.email],
+        attendees: attendeesFor(appt),
         location: location || undefined,
         createMeet: isOnline,
       });
@@ -327,7 +336,7 @@ ${rows.join("\n")}
     }
     try {
       await sendAppointmentEmail({
-        to: appt.email,
+        to: attendeesFor(appt).join(", "),
         subject: "Your meeting with Audarya is confirmed",
         preheader: `Confirmed for ${formatDateTimeInTz(appt.requestedStart, appt.timezone)}`,
         bodyHtml: `<p>Hi ${escapeHtml(appt.name)},</p>

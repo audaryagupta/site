@@ -187,10 +187,15 @@ export async function generateRecap(): Promise<{
 
   const user = `${groundingBlock}
 
+Write the intro in Audarya's first-person voice. It MUST open by naming the mood of the week in a natural way, then say what caught her attention — e.g. "It was a slow week — but a few things still had my attention:" or "What an interesting week. This week my attention was on:". Keep it 2-3 sentences, warm and specific, no emojis.
+
+Also classify the week's overall mood as one of exactly: "slow" (quiet news week), "interesting" (a normal-to-lively week), "busy" (a lot happened), or "heavy" (ONLY if a genuinely global CULTURAL icon — a legendary figure like Messi or Pelé, never a politician — passed away this week). Default to "interesting" if unsure. Never mark a week "heavy" for a politician's death or ordinary bad news.
+
 Return a JSON object with this exact shape:
 {
-  "intro": "2-3 sentence warm intro to this week's recap",
-  "signoff": "one reflective closing sentence",
+  "intro": "2-3 sentence first-person intro that opens with the week's mood and 'this week my attention was on…' phrasing",
+  "mood": "slow" | "interesting" | "busy" | "heavy",
+  "signoff": "one short reflective closing sentence (no sign-off name)",
   "stories": [
     {
       "rank": 1,
@@ -212,10 +217,13 @@ Exactly 10 stories, ranked 1-10.`;
     parsed = JSON.parse(raw) as RecapData;
   } catch {
     parsed = {
-      intro: "Here are the ten stories that shaped the week.",
+      intro:
+        "It was an interesting week — this week my attention was on the stories below.",
+      mood: "interesting",
       stories: [],
     };
   }
+  if (!parsed.mood) parsed.mood = "interesting";
   parsed.stories = (parsed.stories || []).slice(0, 10);
   return { data: parsed, grounded };
 }

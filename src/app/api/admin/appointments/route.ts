@@ -24,6 +24,8 @@ export async function GET() {
 const inviteSchema = z.object({
   name: z.string().trim().min(1).max(120),
   email: z.string().email(),
+  // Additional attendees for group meetings.
+  guests: z.array(z.string().email()).max(50).optional().default([]),
   title: z.string().trim().max(140).optional().default(""),
   isGroup: z.boolean().optional().default(false),
   mode: z.enum(["meet", "physical"]).default("meet"),
@@ -62,6 +64,18 @@ export async function POST(req: Request) {
     data.title.trim() ||
     `${data.isGroup ? "Group meeting" : "Meeting"} with ${data.name}`;
 
+  // Extra attendees only apply to group meetings; de-dupe against the primary.
+  const guests = data.isGroup
+    ? Array.from(
+        new Set(
+          data.guests
+            .map((g) => g.trim().toLowerCase())
+            .filter((g) => g && g !== data.email.trim().toLowerCase())
+        )
+      )
+    : [];
+  const allAttendees = [data.email, ...guests];
+
   let meetingLink: string | null = null;
   const location: string | null =
     data.mode === "physical" ? data.location : null;
@@ -76,7 +90,7 @@ export async function POST(req: Request) {
         description: data.purpose,
         start,
         end,
-        attendees: [data.email],
+        attendees: allAttendees,
         location: location || undefined,
         createMeet: isOnline,
       });
@@ -96,6 +110,7 @@ export async function POST(req: Request) {
       purpose: data.purpose,
       title: data.title,
       isGroup: data.isGroup,
+      guests: guests.join(", "),
       mode: data.mode,
       requestedStart: start,
       requestedEnd: end,
@@ -111,6 +126,13 @@ export async function POST(req: Request) {
       `<tr><td style="padding:4px 0;color:#6b6b66;width:96px;">When</td><td style="padding:4px 0;color:#1a1a18;"><strong>${formatDateTime(start)} IST</strong></td></tr>`,
       `<tr><td style="padding:4px 0;color:#6b6b66;">Format</td><td style="padding:4px 0;color:#1a1a18;">${data.mode === "physical" ? "In person" : "Google Meet (video)"}</td></tr>`,
     ];
+    if (guests.length) {
+      rows.push(
+        `<tr><td style="padding:4px 0;color:#6b6b66;">Guests</td><td style="padding:4px 0;color:#1a1a18;">${escapeHtml(
+          [data.email, ...guests].join(", ")
+        )}</td></tr>`
+      );
+    }
     if (data.mode === "physical") {
       rows.push(
         `<tr><td style="padding:4px 0;color:#6b6b66;">Where</td><td style="padding:4px 0;color:#1a1a18;">${escapeHtml(location || "TBC")}</td></tr>`
@@ -135,7 +157,7 @@ ${rows.join("\n")}
     try {
       const brand = await getBrandAssets();
       await sendEmail({
-        to: data.email,
+        to: allAttendees.join(", "),
         subject: `You're invited: ${data.isGroup ? "group meeting" : "meeting"} with Audarya`,
         html: renderBrandedEmail({
           bannerUrl: brand.bannerUrl,
