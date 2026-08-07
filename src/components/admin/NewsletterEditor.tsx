@@ -2,7 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Loader2, Plus, Send, TestTube2, Trash2 } from "lucide-react";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Loader2,
+  Plus,
+  Send,
+  TestTube2,
+  Trash2,
+} from "lucide-react";
 import { Editor } from "./Editor";
 import { cx } from "@/lib/utils";
 
@@ -171,8 +180,11 @@ export function NewsletterEditor({ initial }: { initial: NLData }) {
       if (!res.ok) throw new Error(data.error || "Send failed");
       if (test) setMsg("Test sent to your inbox.");
       else {
-        setMsg(`Sent to ${data.sent} recipient(s).`);
+        setMsg(`Sent to ${data.sent} recipient(s). Returning to newsletters…`);
         setNl((n) => ({ ...n, status: "sent" }));
+        router.refresh();
+        setTimeout(() => router.push("/admin/newsletters"), 1400);
+        return;
       }
       router.refresh();
     } catch (e) {
@@ -189,6 +201,12 @@ export function NewsletterEditor({ initial }: { initial: NLData }) {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
+          <Link
+            href="/admin/newsletters"
+            className="mb-1 inline-flex items-center gap-1 text-xs text-muted hover:text-foreground"
+          >
+            <ArrowLeft size={13} /> Back to newsletters
+          </Link>
           <h1 className="font-display text-2xl font-semibold">
             {nl.type === "recap" ? "Weekly Recap" : `${nl.type} email`}
           </h1>
