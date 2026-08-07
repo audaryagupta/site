@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Sparkles, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import RecapSchedule from "./RecapSchedule";
 
 interface NL {
   id: string;
@@ -129,6 +130,8 @@ export default function NewslettersPage() {
           {msg}
         </p>
       )}
+
+      <RecapSchedule />
 
       {loading ? (
         <p className="text-muted">Loading…</p>

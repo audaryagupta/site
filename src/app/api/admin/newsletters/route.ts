@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { guard } from "@/lib/adminApi";
 import { hasOpenAI } from "@/lib/openai";
-import { generateRecap } from "@/lib/ai";
-import { renderRecapEmail } from "@/lib/newsletter";
+import { createRecapDraft } from "@/lib/recap";
 
 export async function GET() {
   const g = await guard();
@@ -27,31 +26,8 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    const { data, grounded } = await generateRecap();
-    const dateLabel = new Date().toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      timeZone: "Asia/Kolkata",
-    });
-    const subject = `The Weekly Recap — ${dateLabel}`;
-    // Web/archive preview (no personalization, sample unsub link)
-    const previewHtml = renderRecapEmail({
-      subject,
-      data,
-      unsubUrl: "#",
-    });
-    const nl = await prisma.newsletter.create({
-      data: {
-        type: "recap",
-        subject,
-        previewText: data.intro.slice(0, 140),
-        contentHtml: previewHtml,
-        dataJson: JSON.stringify(data),
-        status: "draft",
-        audience: "subscribers",
-      },
-    });
-    return NextResponse.json({ newsletter: nl, grounded });
+    const { newsletter, grounded } = await createRecapDraft();
+    return NextResponse.json({ newsletter, grounded });
   }
 
   // Generic / promo / birthday draft

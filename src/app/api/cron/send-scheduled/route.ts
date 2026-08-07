@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { runDueScheduledEmails } from "@/lib/scheduledEmail";
+import { runDueRecap } from "@/lib/recap";
 
 export const runtime = "nodejs";
 
@@ -23,5 +24,13 @@ async function run(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { processed } = await runDueScheduledEmails();
-  return NextResponse.json({ ok: true, processed });
+  // Also fire the auto-scheduled Weekly Recap if it's due (own error boundary
+  // so a recap failure never blocks scheduled-email delivery).
+  let recap: { ran: boolean; reason?: string } = { ran: false, reason: "skipped" };
+  try {
+    recap = await runDueRecap();
+  } catch (e) {
+    recap = { ran: false, reason: (e as Error).message.slice(0, 120) };
+  }
+  return NextResponse.json({ ok: true, processed, recap });
 }
