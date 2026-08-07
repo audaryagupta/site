@@ -19,8 +19,12 @@ export default async function AppointmentsPage() {
     getPublicAvailability(),
     getSpecialAvailability(),
   ]);
-  const online = availability.filter((a) => a.kind === "online");
-  const offline = availability.filter((a) => a.kind === "offline");
+  const online = availability.filter(
+    (a) => a.kind === "online" || a.kind === "both"
+  );
+  const offline = availability.filter(
+    (a) => a.kind === "offline" || a.kind === "both"
+  );
   const todayStr = new Date().toISOString().slice(0, 10);
   const upcomingSpecials = specials
     .filter((s) => (s.endDate || s.startDate) >= todayStr)
@@ -37,7 +41,7 @@ export default async function AppointmentsPage() {
         : f(s.startDate);
     return s.status === "unavailable"
       ? `${dates}: away`
-      : `${dates}: ${s.startTime}–${s.endTime}${s.kind === "offline" ? ` (${s.city || "in person"})` : ""}`;
+      : `${dates}: ${s.startTime}–${s.endTime}${s.kind !== "online" ? ` (${s.city || "in person"})` : ""}`;
   };
 
   return (
@@ -108,6 +112,7 @@ export default async function AppointmentsPage() {
               dayOfWeek: w.dayOfWeek,
               startTime: w.startTime,
               endTime: w.endTime,
+              timezone: w.timezone,
             }))}
             specials={specials.map((w) => ({
               status: w.status,
@@ -117,6 +122,7 @@ export default async function AppointmentsPage() {
               endDate: w.endDate,
               startTime: w.startTime,
               endTime: w.endTime,
+              timezone: w.timezone,
             }))}
           />
         </div>

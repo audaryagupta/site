@@ -30,6 +30,29 @@ function absolutize(html: string): string {
   );
 }
 
+// A site-themed call-to-action button for transactional emails. `solid` uses
+// the site's dark foreground; `outline` is a bordered secondary action.
+export function emailButton(
+  href: string,
+  label: string,
+  variant: "solid" | "outline" = "solid"
+): string {
+  const base =
+    "display:inline-block;padding:12px 26px;border-radius:9px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;line-height:1;text-decoration:none;";
+  const style =
+    variant === "solid"
+      ? `${base}background:#1a1a18;color:#ffffff;`
+      : `${base}background:#ffffff;color:#1a1a18;border:1px solid #1a1a18;`;
+  return `<a href="${href}" style="${style}">${label}</a>`;
+}
+
+// Lays out one or more buttons in a spaced row.
+export function emailButtonRow(buttons: string[]): string {
+  return `<div style="margin:26px 0 6px;">${buttons
+    .map((b) => `<span style="display:inline-block;margin:0 10px 10px 0;">${b}</span>`)
+    .join("")}</div>`;
+}
+
 export interface RenderOpts {
   bodyHtml: string;
   bannerUrl?: string;

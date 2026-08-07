@@ -9,8 +9,40 @@ import {
 } from "@/lib/google";
 import { createZoomMeeting, zoomConfigured } from "@/lib/zoom";
 import { emailConfigured, sendEmail } from "@/lib/email";
-import { absoluteUrl, escapeHtml, formatDateTime } from "@/lib/utils";
+import {
+  getBrandAssets,
+  renderBrandedEmail,
+  emailButton,
+  emailButtonRow,
+} from "@/lib/emailTemplate";
+import {
+  absoluteUrl,
+  escapeHtml,
+  formatDateTime,
+  formatDateTimeInTz,
+} from "@/lib/utils";
 import { logActivity } from "@/lib/activity";
+
+// Sends a site-themed, branded (banner + signature) appointment email.
+async function sendAppointmentEmail(args: {
+  to: string;
+  subject: string;
+  bodyHtml: string;
+  preheader?: string;
+}) {
+  const brand = await getBrandAssets();
+  await sendEmail({
+    to: args.to,
+    subject: args.subject,
+    html: renderBrandedEmail({
+      bodyHtml: args.bodyHtml,
+      bannerUrl: brand.bannerUrl,
+      signatureHtml: brand.signatureHtml,
+      footer: true,
+      preheader: args.preheader,
+    }),
+  });
+}
 
 export async function PATCH(
   req: Request,
@@ -96,10 +128,16 @@ export async function PATCH(
       }
       if (await emailConfigured()) {
         try {
-          await sendEmail({
+          const cancelUrl = absoluteUrl(
+            `/appointments/cancel?token=${updated.cancelToken}`
+          );
+          await sendAppointmentEmail({
             to: updated.email,
             subject: "Your appointment details have been updated",
-            html: `<p>Hi ${escapeHtml(updated.name)},</p><p>Your appointment has been updated to <strong>${formatDateTime(updated.requestedStart)} IST</strong>.</p><p>— Audarya</p>`,
+            preheader: `Updated to ${formatDateTimeInTz(updated.requestedStart, updated.timezone)}`,
+            bodyHtml: `<p>Hi ${escapeHtml(updated.name)},</p>
+<p>A quick heads-up — your appointment has been updated to <strong>${formatDateTimeInTz(updated.requestedStart, updated.timezone)}</strong>.</p>
+${emailButtonRow([emailButton(cancelUrl, "Cancel or reschedule", "outline")])}`,
           });
         } catch {
           /* ignore */
@@ -129,12 +167,17 @@ export async function PATCH(
     });
     if (await emailConfigured()) {
       try {
-        await sendEmail({
+        const bookUrl = absoluteUrl("/appointments");
+        await sendAppointmentEmail({
           to: appt.email,
           subject: "About your appointment request",
-          html: `<p>Hi ${escapeHtml(appt.name)},</p><p>Thank you for reaching out. Unfortunately I&apos;m unable to meet at the requested time${
+          preheader: "Let's find another time that works.",
+          bodyHtml: `<p>Hi ${escapeHtml(appt.name)},</p>
+<p>Thank you for reaching out. Unfortunately I&apos;m not able to meet at the requested time${
             body.message ? `: ${escapeHtml(body.message)}` : "."
-          }</p><p>Please feel free to propose another slot.</p><p>— Audarya</p>`,
+          }</p>
+<p>I&apos;d still love to connect — please pick another slot that suits you.</p>
+${emailButtonRow([emailButton(bookUrl, "Book another time")])}`,
         });
       } catch {
         /* ignore */
@@ -161,12 +204,17 @@ export async function PATCH(
     );
     if (await emailConfigured()) {
       try {
-        await sendEmail({
+        const bookUrl = absoluteUrl("/appointments");
+        await sendAppointmentEmail({
           to: appt.email,
           subject: "Your appointment has been cancelled",
-          html: `<p>Hi ${escapeHtml(appt.name)},</p><p>I&apos;m sorry, but I&apos;ve had to cancel our appointment scheduled for <strong>${formatDateTime(appt.requestedStart)} IST</strong>${
+          preheader: "You can book another time whenever you like.",
+          bodyHtml: `<p>Hi ${escapeHtml(appt.name)},</p>
+<p>I&apos;m sorry, but I&apos;ve had to cancel our appointment scheduled for <strong>${formatDateTimeInTz(appt.requestedStart, appt.timezone)}</strong>${
             body.message ? `: ${escapeHtml(body.message)}` : "."
-          }</p><p>Please feel free to book another time.</p><p>— Audarya</p>`,
+          }</p>
+<p>Please feel free to book another time — I&apos;d be glad to reschedule.</p>
+${emailButtonRow([emailButton(bookUrl, "Book another time")])}`,
         });
       } catch {
         /* ignore */
@@ -246,16 +294,27 @@ export async function PATCH(
   if (await emailConfigured()) {
     const details =
       appt.mode === "physical"
-        ? `<p><strong>Where:</strong> ${escapeHtml(location)}</p>`
+        ? `<p style="margin:16px 0;padding:14px 16px;background:#f4f2ec;border-radius:9px;"><strong>Where:</strong> ${escapeHtml(location)}</p>`
         : meetingLink
-          ? `<p><strong>Join:</strong> <a href="${meetingLink}">${meetingLink}</a></p>`
+          ? `<p style="margin:16px 0;padding:14px 16px;background:#f4f2ec;border-radius:9px;"><strong>Join link:</strong> <a href="${meetingLink}" style="color:#1a1a18;">${meetingLink}</a></p>`
           : "";
-    const cancelUrl = absoluteUrl(`/appointments/cancel?token=${appt.cancelToken}`);
+    const cancelUrl = absoluteUrl(
+      `/appointments/cancel?token=${appt.cancelToken}`
+    );
+    const buttons = [emailButton(cancelUrl, "Cancel or reschedule", "outline")];
+    if (meetingLink) {
+      buttons.unshift(emailButton(meetingLink, "Join the meeting"));
+    }
     try {
-      await sendEmail({
+      await sendAppointmentEmail({
         to: appt.email,
         subject: "Your appointment is confirmed",
-        html: `<p>Hi ${escapeHtml(appt.name)},</p><p>Your appointment is confirmed for <strong>${formatDateTime(appt.requestedStart)} IST</strong>.</p>${details}<p>Looking forward to it.</p><p>— Audarya</p><p style="font-size:12px;color:#888">Need to cancel? <a href="${cancelUrl}">Cancel this appointment</a>.</p>`,
+        preheader: `Confirmed for ${formatDateTimeInTz(appt.requestedStart, appt.timezone)}`,
+        bodyHtml: `<p>Hi ${escapeHtml(appt.name)},</p>
+<p>Great news — your appointment is confirmed for <strong>${formatDateTimeInTz(appt.requestedStart, appt.timezone)}</strong>.</p>
+${details}
+<p>Looking forward to it. If plans change, you can cancel or reschedule any time.</p>
+${emailButtonRow(buttons)}`,
       });
     } catch {
       /* ignore */

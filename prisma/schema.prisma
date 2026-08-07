@@ -121,6 +121,7 @@ model Appointment {
   mode           String   @default("meet") // meet | zoom | physical
   requestedStart DateTime
   requestedEnd   DateTime
+  timezone       String   @default("Asia/Kolkata") // requester's chosen tz (for display)
   status         String   @default("pending") // pending | accepted | rejected | cancelled
   meetingLink    String?
   location       String?

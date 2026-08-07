@@ -13,6 +13,12 @@ import {
   Video,
 } from "lucide-react";
 import { cx } from "@/lib/utils";
+import {
+  TIMEZONES,
+  DEFAULT_TIMEZONE,
+  tzLabel,
+  zonedWallTimeToUtc,
+} from "@/lib/timezones";
 import { Captcha, type CaptchaValue } from "./Captcha";
 import { PhoneInput } from "./PhoneInput";
 
@@ -22,6 +28,7 @@ type Window = {
   dayOfWeek: number;
   startTime: string;
   endTime: string;
+  timezone?: string;
 };
 
 // A special date-range window that overrides the weekly default for every date
@@ -35,7 +42,23 @@ type Special = {
   endDate: string;
   startTime: string;
   endTime: string;
+  timezone?: string;
 };
+
+// An availability window's `kind` matches the requested meeting kind when it is
+// exactly that kind or marked "both" (online & in person).
+function kindMatches(windowKind: string, wanted: string): boolean {
+  return windowKind === wanted || windowKind === "both";
+}
+
+// Render an absolute instant as a time label in the viewer's chosen timezone.
+function timeInTz(iso: string, tz: string): string {
+  return new Date(iso).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: tz,
+  });
+}
 
 type Range = { start: string; end: string };
 
@@ -97,12 +120,6 @@ function ymd(d: Date) {
     d.getDate()
   ).padStart(2, "0")}`;
 }
-function to12h(hhmm: string) {
-  const [h, m] = hhmm.split(":").map(Number);
-  const ampm = h >= 12 ? "PM" : "AM";
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
-}
 
 export function AppointmentBooker({
   windows = [],
@@ -143,6 +160,22 @@ export function AppointmentBooker({
     () => new Date(today.getFullYear(), today.getMonth(), 1)
   );
 
+  // The viewer's timezone: detected from their browser, changeable via the
+  // picker. Slots are shown converted into this zone.
+  const detectedTz = useMemo(() => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || DEFAULT_TIMEZONE;
+    } catch {
+      return DEFAULT_TIMEZONE;
+    }
+  }, []);
+  const [viewerTz, setViewerTz] = useState(detectedTz);
+  // Ensure the detected zone is always an option even if not in the curated list.
+  const tzOptions = useMemo(() => {
+    if (TIMEZONES.some((t) => t.value === detectedTz)) return TIMEZONES;
+    return [{ value: detectedTz, label: `${detectedTz} (your timezone)` }, ...TIMEZONES];
+  }, [detectedTz]);
+
   function update<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
     setForm((f) => ({ ...f, [k]: v }));
   }
@@ -152,8 +185,29 @@ export function AppointmentBooker({
   // Whether any availability (weekly default or special date range) is defined
   // for this mode kind. When none, visitors can pick any day/time freely.
   const hasWindows =
-    windows.some((w) => w.kind === kind) ||
-    specials.some((s) => s.kind === kind);
+    windows.some((w) => kindMatches(w.kind, kind)) ||
+    specials.some((s) => kindMatches(s.kind, kind));
+
+  // The owner's timezone that a given date's windows are defined in (specials
+  // take priority, then the matching weekly window, else the site default).
+  const ownerTzForDate = useCallback(
+    (dateStr: string): string => {
+      const covering = specials.find(
+        (s) =>
+          kindMatches(s.kind, kind) &&
+          s.status !== "unavailable" &&
+          s.startDate <= dateStr &&
+          dateStr <= s.endDate
+      );
+      if (covering?.timezone) return covering.timezone;
+      const day = new Date(`${dateStr}T00:00:00`).getDay();
+      const w = windows.find(
+        (w) => kindMatches(w.kind, kind) && w.dayOfWeek === day
+      );
+      return w?.timezone || DEFAULT_TIMEZONE;
+    },
+    [windows, specials, kind]
+  );
 
   // Resolve the bookable time ranges for a specific date, applying date-range
   // specials on top of the weekly default: an available special replaces the
@@ -161,7 +215,10 @@ export function AppointmentBooker({
   const rangesForDate = useCallback(
     (dateStr: string): Range[] => {
       const covering = specials.filter(
-        (s) => s.kind === kind && s.startDate <= dateStr && dateStr <= s.endDate
+        (s) =>
+          kindMatches(s.kind, kind) &&
+          s.startDate <= dateStr &&
+          dateStr <= s.endDate
       );
       const openSpecials = covering.filter((s) => s.status !== "unavailable");
       const blocks = covering.filter((s) => s.status === "unavailable");
@@ -169,7 +226,7 @@ export function AppointmentBooker({
       const base: Range[] = openSpecials.length
         ? openSpecials.map((s) => ({ start: s.startTime, end: s.endTime }))
         : windows
-            .filter((w) => w.kind === kind && w.dayOfWeek === day)
+            .filter((w) => kindMatches(w.kind, kind) && w.dayOfWeek === day)
             .map((w) => ({ start: w.startTime, end: w.endTime }));
       if (!blocks.length) return base;
       return subtractBlocks(
@@ -204,12 +261,22 @@ export function AppointmentBooker({
     return true;
   }
 
+  // Whether the chosen date has an explicit availability window.
+  const dayHasWindow = useMemo(
+    () => (form.date ? rangesForDate(form.date).length > 0 : false),
+    [form.date, rangesForDate]
+  );
+
   // Slots for the chosen date, derived from the resolved ranges for that date
-  // (weekly default overridden/blocked by any date-range specials).
+  // (weekly default overridden/blocked by any date-range specials). On free
+  // days with no configured window we still present selectable slots across a
+  // default working range (09:00–18:00 IST) rather than a raw time field.
   const slots = useMemo(() => {
     if (!form.date) return [];
+    const ranges = rangesForDate(form.date);
+    const effective = ranges.length ? ranges : [{ start: "09:00", end: "18:00" }];
     const out: string[] = [];
-    for (const r of rangesForDate(form.date)) {
+    for (const r of effective) {
       for (
         let t = toMinutes(r.start);
         t + form.duration <= toMinutes(r.end);
@@ -226,11 +293,22 @@ export function AppointmentBooker({
     setStatus("loading");
     setError("");
     try {
+      // Resolve the chosen owner-local slot to an absolute instant so the
+      // booking lands at the right moment regardless of the viewer's timezone.
+      const startISO =
+        form.date && form.time
+          ? zonedWallTimeToUtc(
+              `${form.date}T${form.time}`,
+              ownerTzForDate(form.date)
+            ).toISOString()
+          : "";
       const res = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          startISO,
+          timezone: viewerTz,
           captchaToken: captcha.token,
           captchaAnswer: captcha.answer,
         }),
@@ -392,6 +470,27 @@ export function AppointmentBooker({
             </div>
           </div>
 
+          <div>
+            <label className="mb-2 block text-xs uppercase tracking-widest text-muted">
+              Your timezone
+            </label>
+            <select
+              className="h-11 w-full max-w-sm rounded-md border border-line bg-background px-3 text-sm outline-none focus:border-foreground"
+              value={viewerTz}
+              onChange={(e) => setViewerTz(e.target.value)}
+            >
+              {tzOptions.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-muted">
+              Times below are shown in your timezone. Change it if you&apos;re
+              elsewhere.
+            </p>
+          </div>
+
           <div className="grid gap-6 md:grid-cols-[1fr_0.9fr]">
             {/* Month calendar */}
             <div className="rounded-xl border border-line p-4">
@@ -492,35 +591,35 @@ export function AppointmentBooker({
                 <p className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
                   Pick a date to see available times.
                 </p>
-              ) : slots.length > 0 ? (
-                <div className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto pr-1">
-                  {slots.map((s) => (
-                    <button
-                      type="button"
-                      key={s}
-                      onClick={() => update("time", s)}
-                      className={cx(
-                        "rounded-md border px-3 py-2.5 text-sm transition",
-                        form.time === s
-                          ? "border-foreground bg-foreground text-background"
-                          : "border-line hover:border-foreground"
-                      )}
-                    >
-                      {to12h(s)}
-                    </button>
-                  ))}
-                </div>
               ) : (
                 <div className="space-y-2">
-                  <input
-                    type="time"
-                    className={input}
-                    value={form.time}
-                    onChange={(e) => update("time", e.target.value)}
-                  />
+                  <div className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3">
+                    {slots.map((s) => {
+                      const iso = zonedWallTimeToUtc(
+                        `${form.date}T${s}`,
+                        ownerTzForDate(form.date)
+                      ).toISOString();
+                      return (
+                        <button
+                          type="button"
+                          key={s}
+                          onClick={() => update("time", s)}
+                          className={cx(
+                            "rounded-md border px-3 py-2.5 text-sm transition",
+                            form.time === s
+                              ? "border-foreground bg-foreground text-background"
+                              : "border-line hover:border-foreground"
+                          )}
+                        >
+                          {timeInTz(iso, viewerTz)}
+                        </button>
+                      );
+                    })}
+                  </div>
                   <p className="text-xs text-muted">
-                    No set window that day — pick any time and I&apos;ll confirm
-                    from my calendar.
+                    {dayHasWindow
+                      ? `Times shown in ${tzLabel(viewerTz)}.`
+                      : `No set window that day — these slots (in ${tzLabel(viewerTz)}) are indicative; I'll confirm from my calendar.`}
                   </p>
                 </div>
               )}
@@ -556,14 +655,25 @@ export function AppointmentBooker({
               {MODES.find((m) => m.key === form.mode)?.label}
             </strong>{" "}
             ·{" "}
-            {form.date
-              ? new Date(`${form.date}T00:00:00`).toLocaleDateString("en-US", {
-                  weekday: "short",
-                  month: "short",
-                  day: "numeric",
-                })
-              : ""}{" "}
-            at {form.time ? to12h(form.time) : ""} · {form.duration} min
+            {(() => {
+              if (!form.date || !form.time) return null;
+              const iso = zonedWallTimeToUtc(
+                `${form.date}T${form.time}`,
+                ownerTzForDate(form.date)
+              ).toISOString();
+              const dateLabel = new Date(iso).toLocaleDateString("en-US", {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+                timeZone: viewerTz,
+              });
+              return (
+                <>
+                  {dateLabel} at {timeInTz(iso, viewerTz)} · {form.duration} min
+                  <span className="text-muted"> ({tzLabel(viewerTz)})</span>
+                </>
+              );
+            })()}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <input

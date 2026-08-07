@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { cx } from "@/lib/utils";
+import { TIMEZONES, DEFAULT_TIMEZONE } from "@/lib/timezones";
 
 interface Window {
   id: string;
@@ -22,15 +23,21 @@ const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const WEEKDAYS = [1, 2, 3, 4, 5];
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
+type Kind = "online" | "offline" | "both";
+
 const empty = {
   status: "available" as "available" | "unavailable",
-  kind: "online" as "online" | "offline",
+  kind: "online" as Kind,
   city: "",
   startTime: "10:00",
   endTime: "18:00",
-  timezone: "Asia/Kolkata",
+  timezone: DEFAULT_TIMEZONE,
   note: "",
 };
+
+function kindLabel(k: string) {
+  return k === "offline" ? "In person" : k === "both" ? "Online & in person" : "Online";
+}
 
 function fmtDate(d: string) {
   if (!d) return "";
@@ -173,12 +180,13 @@ export default function AvailabilityPage() {
               onChange={(e) =>
                 setForm((f) => ({
                   ...f,
-                  kind: e.target.value as "online" | "offline",
+                  kind: e.target.value as Kind,
                 }))
               }
             >
               <option value="online">Online</option>
               <option value="offline">In person</option>
+              <option value="both">Both (online &amp; in person)</option>
             </select>
           </label>
           <label className="block">
@@ -219,6 +227,28 @@ export default function AvailabilityPage() {
               onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
             />
           </label>
+          <label className="block sm:col-span-3">
+            <span className="mb-1 block text-xs uppercase tracking-widest text-muted">
+              These hours are in
+            </span>
+            <select
+              className={`${input} w-full`}
+              value={form.timezone}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, timezone: e.target.value }))
+              }
+            >
+              {TIMEZONES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="text-xs text-muted sm:col-span-3">
+            Visitors see these times converted to their own timezone
+            automatically.
+          </p>
         </div>
 
         {mode === "weekly" ? (
@@ -405,7 +435,7 @@ function WindowGroup({
                       : "bg-subtle text-muted"
                   )}
                 >
-                  {w.kind === "offline" ? "In person" : "Online"}
+                  {kindLabel(w.kind)}
                 </span>{" "}
                 <strong>
                   {range

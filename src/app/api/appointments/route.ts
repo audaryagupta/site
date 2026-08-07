@@ -2,8 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { emailConfigured, sendEmail } from "@/lib/email";
+import { getBrandAssets, renderBrandedEmail } from "@/lib/emailTemplate";
 import { verifyCaptcha } from "@/lib/captcha";
-import { absoluteUrl, escapeHtml, formatDateTime } from "@/lib/utils";
+import {
+  absoluteUrl,
+  escapeHtml,
+  formatDateTime,
+  formatDateTimeInTz,
+} from "@/lib/utils";
 
 const schema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -17,6 +23,11 @@ const schema = z.object({
   mode: z.enum(["meet", "zoom", "physical"]).default("meet"),
   date: z.string().min(1),
   time: z.string().min(1),
+  // Absolute instant for the chosen slot (resolved client-side from the owner's
+  // availability timezone). Preferred over date/time when present.
+  startISO: z.string().optional().default(""),
+  // The requester's chosen display timezone (IANA).
+  timezone: z.string().trim().max(60).optional().default("Asia/Kolkata"),
   duration: z.number().int().min(15).max(240).default(30),
   captchaToken: z.string().optional().default(""),
   captchaAnswer: z.string().optional().default(""),
@@ -42,8 +53,12 @@ export async function POST(req: Request) {
       );
     }
 
-    // Interpret the requester's chosen date/time as IST (Asia/Kolkata).
-    const start = new Date(`${data.date}T${data.time}:00+05:30`);
+    // Prefer the absolute instant resolved client-side (from the owner's
+    // availability timezone); fall back to interpreting date/time as IST.
+    let start = data.startISO ? new Date(data.startISO) : new Date(NaN);
+    if (isNaN(start.getTime())) {
+      start = new Date(`${data.date}T${data.time}:00+05:30`);
+    }
     if (isNaN(start.getTime())) {
       return NextResponse.json(
         { error: "Invalid date or time." },
@@ -61,6 +76,7 @@ export async function POST(req: Request) {
         mode: data.mode,
         requestedStart: start,
         requestedEnd: end,
+        timezone: data.timezone || "Asia/Kolkata",
       },
     });
 
@@ -76,6 +92,7 @@ export async function POST(req: Request) {
               data.mode
             } meeting.</p>
             <p>When: ${formatDateTime(start)} IST (${data.duration} min)<br/>
+            Their time: ${formatDateTimeInTz(start, data.timezone)}<br/>
             Contact: ${escapeHtml(data.email)}${
               data.phone ? `, ${escapeHtml(data.phone)}` : ""
             }</p>
@@ -88,20 +105,27 @@ export async function POST(req: Request) {
           // ignore
         }
       }
-      // Acknowledge the requester
+      // Acknowledge the requester (branded, in their timezone).
       try {
+        const brand = await getBrandAssets();
         await sendEmail({
           to: data.email,
           subject: "Your appointment request was received",
-          html: `<p>Hi ${escapeHtml(data.name)},</p>
-          <p>Thanks — your request for a <strong>${
-            data.mode === "physical" ? "in-person" : data.mode
-          } meeting</strong> on <strong>${formatDateTime(
-            start
-          )} IST</strong> has been received.</p>
-          <p>I review every request personally. Once I accept it, you&apos;ll
-          get a confirmation with a calendar invite and the meeting details.</p>
-          <p>— Audarya</p>`,
+          html: renderBrandedEmail({
+            bannerUrl: brand.bannerUrl,
+            signatureHtml: brand.signatureHtml,
+            footer: true,
+            preheader: `Requested for ${formatDateTimeInTz(start, data.timezone)}`,
+            bodyHtml: `<p>Hi ${escapeHtml(data.name)},</p>
+<p>Thanks — your request for a <strong>${
+              data.mode === "physical" ? "in-person" : data.mode
+            } meeting</strong> on <strong>${formatDateTimeInTz(
+              start,
+              data.timezone
+            )}</strong> has been received.</p>
+<p>I review every request personally. Once I accept it, you&apos;ll get a
+confirmation with a calendar invite and the meeting details.</p>`,
+          }),
         });
       } catch {
         // ignore

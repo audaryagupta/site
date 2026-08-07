@@ -8,7 +8,7 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const schema = z
   .object({
     status: z.enum(["available", "unavailable"]).default("available"),
-    kind: z.enum(["online", "offline"]).default("online"),
+    kind: z.enum(["online", "offline", "both"]).default("online"),
     city: z.string().trim().max(120).optional().default(""),
     // One or more weekdays (0=Sun … 6=Sat). `days` lets the admin duplicate a
     // weekly window across several weekdays in a single request. Empty for a
