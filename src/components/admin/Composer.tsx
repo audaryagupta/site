@@ -81,7 +81,15 @@ export function Composer({ ownerEmail }: { ownerEmail: string }) {
     setRecipients((r) => r.filter((e) => e !== email));
   }
 
-  async function submit(to: string[]) {
+  function resetForm() {
+    setSubject("");
+    setBody("");
+    setRecipients([]);
+    setSchedule(false);
+    setSendAtLocal("");
+  }
+
+  async function submit(to: string[], isTest = false) {
     if (!subject.trim() || !body.trim() || to.length === 0) {
       setResult("Add a subject, a message and at least one recipient.");
       return;
@@ -121,6 +129,7 @@ export function Composer({ ownerEmail }: { ownerEmail: string }) {
     }
     if (data.scheduled) {
       setResult(`Scheduled for ${data.total} recipient(s).`);
+      if (!isTest) resetForm();
       refreshScheduled();
       return;
     }
@@ -130,6 +139,9 @@ export function Composer({ ownerEmail }: { ownerEmail: string }) {
         failed ? " Some failed — is the mailbox connected & Gmail API enabled?" : ""
       }`
     );
+    // Clear the composer after a real send so the message doesn't linger.
+    // Keep the form intact for "Send test to me" so you can send the real one.
+    if (!isTest && data.sent > 0 && failed === 0) resetForm();
   }
 
   async function cancelScheduled(id: string) {
@@ -243,7 +255,7 @@ export function Composer({ ownerEmail }: { ownerEmail: string }) {
               : `Send to ${recipients.length}`}
           </button>
           <button
-            onClick={() => submit([ownerEmail])}
+            onClick={() => submit([ownerEmail], true)}
             disabled={sending}
             className="rounded-md border border-line px-4 py-2 text-sm hover:bg-subtle disabled:opacity-50"
           >
