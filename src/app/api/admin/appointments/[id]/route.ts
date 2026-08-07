@@ -7,7 +7,6 @@ import {
   googleConfigured,
   isBusy,
 } from "@/lib/google";
-import { createZoomMeeting, zoomConfigured } from "@/lib/zoom";
 import { emailConfigured, sendEmail } from "@/lib/email";
 import {
   getBrandAssets,
@@ -44,6 +43,17 @@ async function sendAppointmentEmail(args: {
   });
 }
 
+// The calendar event title: the guest's chosen meeting name when given,
+// otherwise a clear "(Group) meeting with <name>".
+function calendarSummary(appt: {
+  title: string;
+  isGroup: boolean;
+  name: string;
+}): string {
+  if (appt.title.trim()) return appt.title.trim();
+  return `${appt.isGroup ? "Group meeting" : "Meeting"} with ${appt.name}`;
+}
+
 export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
@@ -70,6 +80,8 @@ export async function PATCH(
       email?: string;
       phone?: string;
       purpose?: string;
+      title?: string;
+      isGroup?: boolean;
       mode?: string;
       location?: string | null;
       requestedStart?: Date;
@@ -79,6 +91,8 @@ export async function PATCH(
     if (typeof body.email === "string") data.email = body.email;
     if (typeof body.phone === "string") data.phone = body.phone;
     if (typeof body.purpose === "string") data.purpose = body.purpose;
+    if (typeof body.title === "string") data.title = body.title;
+    if (typeof body.isGroup === "boolean") data.isGroup = body.isGroup;
     if (typeof body.mode === "string") data.mode = body.mode;
     if (typeof body.location === "string") data.location = body.location;
     if (body.requestedStart) {
@@ -106,20 +120,22 @@ export async function PATCH(
         }
         try {
           const result = await createCalendarEvent({
-            summary: `${updated.mode === "physical" ? "Meeting" : "Call"} with ${updated.name}`,
+            summary: calendarSummary(updated),
             description: updated.purpose,
             start: updated.requestedStart,
             end: updated.requestedEnd,
             attendees: [updated.email],
             location: updated.location || undefined,
-            createMeet: updated.mode === "meet",
+            createMeet: updated.mode !== "physical",
           });
           await prisma.appointment.update({
             where: { id: params.id },
             data: {
               calendarEventId: result.eventId || null,
               meetingLink:
-                updated.mode === "meet" ? result.meetLink : updated.meetingLink,
+                updated.mode !== "physical"
+                  ? result.meetLink
+                  : updated.meetingLink,
             },
           });
         } catch {
@@ -133,10 +149,10 @@ export async function PATCH(
           );
           await sendAppointmentEmail({
             to: updated.email,
-            subject: "Your appointment details have been updated",
+            subject: "Your meeting with Audarya has been updated",
             preheader: `Updated to ${formatDateTimeInTz(updated.requestedStart, updated.timezone)}`,
             bodyHtml: `<p>Hi ${escapeHtml(updated.name)},</p>
-<p>A quick heads-up — your appointment has been updated to <strong>${formatDateTimeInTz(updated.requestedStart, updated.timezone)}</strong>.</p>
+<p>A quick heads-up — your meeting has been updated to <strong>${formatDateTimeInTz(updated.requestedStart, updated.timezone)}</strong>.</p>
 ${emailButtonRow([emailButton(cancelUrl, "Cancel or reschedule", "outline")])}`,
           });
         } catch {
@@ -170,7 +186,7 @@ ${emailButtonRow([emailButton(cancelUrl, "Cancel or reschedule", "outline")])}`,
         const bookUrl = absoluteUrl("/appointments");
         await sendAppointmentEmail({
           to: appt.email,
-          subject: "About your appointment request",
+          subject: "About your meeting request",
           preheader: "Let's find another time that works.",
           bodyHtml: `<p>Hi ${escapeHtml(appt.name)},</p>
 <p>Thank you for reaching out. Unfortunately I&apos;m not able to meet at the requested time${
@@ -207,10 +223,10 @@ ${emailButtonRow([emailButton(bookUrl, "Book another time")])}`,
         const bookUrl = absoluteUrl("/appointments");
         await sendAppointmentEmail({
           to: appt.email,
-          subject: "Your appointment has been cancelled",
+          subject: "Your meeting with Audarya has been cancelled",
           preheader: "You can book another time whenever you like.",
           bodyHtml: `<p>Hi ${escapeHtml(appt.name)},</p>
-<p>I&apos;m sorry, but I&apos;ve had to cancel our appointment scheduled for <strong>${formatDateTimeInTz(appt.requestedStart, appt.timezone)}</strong>${
+<p>I&apos;m sorry, but I&apos;ve had to cancel our meeting scheduled for <strong>${formatDateTimeInTz(appt.requestedStart, appt.timezone)}</strong>${
             body.message ? `: ${escapeHtml(body.message)}` : "."
           }</p>
 <p>Please feel free to book another time — I&apos;d be glad to reschedule.</p>
@@ -229,21 +245,9 @@ ${emailButtonRow([emailButton(bookUrl, "Book another time")])}`,
   let calendarEventId: string | null = null;
   const warnings: string[] = [];
 
+  const isOnline = appt.mode !== "physical";
+
   try {
-    if (appt.mode === "zoom") {
-      if (zoomConfigured()) {
-        const durationMinutes = Math.round(
-          (appt.requestedEnd.getTime() - appt.requestedStart.getTime()) / 60000
-        );
-        meetingLink = await createZoomMeeting({
-          topic: `Meeting with ${appt.name}`,
-          start: appt.requestedStart,
-          durationMinutes,
-        });
-      } else {
-        warnings.push("Zoom not configured — no link generated.");
-      }
-    }
     if (appt.mode === "physical") {
       location = body.location || "New Delhi (to be confirmed)";
     }
@@ -258,17 +262,18 @@ ${emailButtonRow([emailButton(bookUrl, "Book another time")])}`,
             "Your Google Calendar is busy (or out-of-office) during this slot. Accept again to override.",
         });
       }
+      // Online meetings get a Google Meet link generated automatically.
       const result = await createCalendarEvent({
-        summary: `${appt.mode === "physical" ? "Meeting" : "Call"} with ${appt.name}`,
+        summary: calendarSummary(appt),
         description: appt.purpose,
         start: appt.requestedStart,
         end: appt.requestedEnd,
         attendees: [appt.email],
         location: location || undefined,
-        createMeet: appt.mode === "meet",
+        createMeet: isOnline,
       });
       calendarEventId = result.eventId || null;
-      if (appt.mode === "meet") meetingLink = result.meetLink;
+      if (isOnline) meetingLink = result.meetLink;
     } else {
       warnings.push("Google Calendar not connected — event not created.");
     }
@@ -292,28 +297,43 @@ ${emailButtonRow([emailButton(bookUrl, "Book another time")])}`,
   );
 
   if (await emailConfigured()) {
-    const details =
-      appt.mode === "physical"
-        ? `<p style="margin:16px 0;padding:14px 16px;background:#f4f2ec;border-radius:9px;"><strong>Where:</strong> ${escapeHtml(location)}</p>`
-        : meetingLink
-          ? `<p style="margin:16px 0;padding:14px 16px;background:#f4f2ec;border-radius:9px;"><strong>Join link:</strong> <a href="${meetingLink}" style="color:#1a1a18;">${meetingLink}</a></p>`
-          : "";
+    const meetingName = calendarSummary(appt);
+    const rows: string[] = [
+      `<tr><td style="padding:4px 0;color:#6b6b66;width:96px;">When</td><td style="padding:4px 0;color:#1a1a18;"><strong>${formatDateTimeInTz(appt.requestedStart, appt.timezone)}</strong></td></tr>`,
+      `<tr><td style="padding:4px 0;color:#6b6b66;">Format</td><td style="padding:4px 0;color:#1a1a18;">${appt.mode === "physical" ? "In person" : "Google Meet (video)"}</td></tr>`,
+    ];
+    if (appt.mode === "physical") {
+      rows.push(
+        `<tr><td style="padding:4px 0;color:#6b6b66;">Where</td><td style="padding:4px 0;color:#1a1a18;">${escapeHtml(location)}</td></tr>`
+      );
+    } else if (meetingLink) {
+      rows.push(
+        `<tr><td style="padding:4px 0;color:#6b6b66;">Join</td><td style="padding:4px 0;"><a href="${meetingLink}" style="color:#1a1a18;">${meetingLink}</a></td></tr>`
+      );
+    }
+    const details = `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:16px 0;padding:16px 18px;background:#f4f2ec;border-radius:12px;font-size:14px;line-height:1.5;">
+<tr><td colspan="2" style="padding-bottom:8px;font-family:Georgia,serif;font-size:16px;color:#1a1a18;"><strong>${escapeHtml(meetingName)}</strong></td></tr>
+${rows.join("\n")}
+</table>`;
     const cancelUrl = absoluteUrl(
       `/appointments/cancel?token=${appt.cancelToken}`
     );
-    const buttons = [emailButton(cancelUrl, "Cancel or reschedule", "outline")];
+    const buttons = [
+      emailButton(cancelUrl, "Reschedule", "outline"),
+      emailButton(cancelUrl, "Cancel", "outline"),
+    ];
     if (meetingLink) {
       buttons.unshift(emailButton(meetingLink, "Join the meeting"));
     }
     try {
       await sendAppointmentEmail({
         to: appt.email,
-        subject: "Your appointment is confirmed",
+        subject: "Your meeting with Audarya is confirmed",
         preheader: `Confirmed for ${formatDateTimeInTz(appt.requestedStart, appt.timezone)}`,
         bodyHtml: `<p>Hi ${escapeHtml(appt.name)},</p>
-<p>Great news — your appointment is confirmed for <strong>${formatDateTimeInTz(appt.requestedStart, appt.timezone)}</strong>.</p>
+<p>Great news — your ${appt.isGroup ? "group meeting" : "meeting"} with Audarya is confirmed.</p>
 ${details}
-<p>Looking forward to it. If plans change, you can cancel or reschedule any time.</p>
+<p>Looking forward to it. If plans change, you can reschedule or cancel any time using the buttons below.</p>
 ${emailButtonRow(buttons)}`,
       });
     } catch {

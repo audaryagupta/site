@@ -96,7 +96,7 @@ export default async function ContactPage() {
               {pickStr(content, "contact.book.heading", "Book an appointment")}
             </h2>
             <p className="mt-2 font-serif text-muted">
-              {pickStr(content, "contact.book.body", "Request a Google Meet, Zoom, or in-person meeting. Name, email, phone with country code, purpose, date, time and CAPTCHA are required so invitations and updates reach the right person.")}
+              {pickStr(content, "contact.book.body", "Request a Google Meet or in-person meeting with Audarya. Name, email, phone with country code, purpose, date, time and CAPTCHA are required so invitations and updates reach the right person.")}
             </p>
 
             {availability.length > 0 && (

@@ -6,8 +6,8 @@ import { AppointmentBooker } from "@/components/AppointmentBooker";
 import { getPublicAvailability, getSpecialAvailability } from "@/lib/queries";
 
 export const metadata: Metadata = {
-  title: "Book an appointment",
-  description: "Request a Google Meet, Zoom, or in-person meeting with Audarya.",
+  title: "Book a meeting with Audarya",
+  description: "Request a Google Meet or in-person meeting with Audarya.",
 };
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -59,7 +59,7 @@ export default async function AppointmentsPage() {
             Let&apos;s find a time
           </p>
           <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight sm:text-5xl">
-            Book an appointment
+            Book a meeting with Audarya
           </h1>
           <p className="mt-4 font-serif text-lg text-muted">
             Pick how you&apos;d like to meet, choose a time, and send your

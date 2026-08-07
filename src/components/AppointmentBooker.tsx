@@ -10,6 +10,8 @@ import {
   ChevronRight,
   Clock,
   MapPin,
+  User,
+  Users,
   Video,
 } from "lucide-react";
 import { cx } from "@/lib/utils";
@@ -84,7 +86,6 @@ function subtractBlocks(ranges: Range[], blocks: Range[]): Range[] {
 
 const MODES = [
   { key: "meet", label: "Google Meet", icon: Video, kind: "online" },
-  { key: "zoom", label: "Zoom", icon: Video, kind: "online" },
   { key: "physical", label: "In person", icon: MapPin, kind: "offline" },
 ] as const;
 
@@ -138,6 +139,8 @@ export function AppointmentBooker({
     email: "",
     phone: "",
     purpose: "",
+    title: "",
+    isGroup: false,
     mode: "meet" as (typeof MODES)[number]["key"],
     date: "",
     time: "",
@@ -351,7 +354,7 @@ export function AppointmentBooker({
         className="group inline-flex h-12 items-center gap-2 rounded-md bg-foreground px-6 text-sm font-medium text-background transition hover:opacity-90"
       >
         <CalendarCheck size={17} />
-        Make an appointment
+        Book a meeting with Audarya
         <ArrowRight
           size={16}
           className="transition-transform group-hover:translate-x-0.5"
@@ -399,9 +402,47 @@ export function AppointmentBooker({
 
       {/* Step 1 — type */}
       {step === 0 && (
-        <div key="step-type" className="animate-fade-up space-y-4">
+        <div key="step-type" className="animate-fade-up space-y-5">
+          <div>
+            <p className="mb-2 text-sm text-muted">Who is this meeting for?</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                { g: false, label: "One-on-one", icon: User, hint: "Just you and Audarya" },
+                { g: true, label: "Group meeting", icon: Users, hint: "You and a few others" },
+              ].map((o) => {
+                const Icon = o.icon;
+                const active = form.isGroup === o.g;
+                return (
+                  <button
+                    type="button"
+                    key={o.label}
+                    onClick={() => update("isGroup", o.g)}
+                    className={cx(
+                      "flex items-center gap-3 rounded-lg border px-4 py-3 text-left text-sm transition",
+                      active
+                        ? "border-foreground bg-foreground text-background"
+                        : "border-line hover:bg-subtle"
+                    )}
+                  >
+                    <Icon size={18} />
+                    <span>
+                      <span className="block font-medium">{o.label}</span>
+                      <span
+                        className={cx(
+                          "block text-xs",
+                          active ? "text-background/70" : "text-muted"
+                        )}
+                      >
+                        {o.hint}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <p className="text-sm text-muted">How would you like to meet?</p>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             {MODES.map((m) => {
               const Icon = m.icon;
               const active = form.mode === m.key;
@@ -650,7 +691,11 @@ export function AppointmentBooker({
       {step === 2 && (
         <form key="step-details" onSubmit={submit} className="animate-fade-up space-y-4">
           <div className="rounded-md border border-line bg-subtle/50 px-4 py-3 text-sm">
-            <span className="text-muted">Requesting:</span>{" "}
+            <span className="text-muted">Requesting a</span>{" "}
+            <strong>
+              {form.isGroup ? "group meeting" : "meeting"} with Audarya
+            </strong>{" "}
+            ·{" "}
             <strong>
               {MODES.find((m) => m.key === form.mode)?.label}
             </strong>{" "}
@@ -702,6 +747,12 @@ export function AppointmentBooker({
               right number.
             </p>
           </div>
+          <input
+            className={input}
+            placeholder="Meeting name (optional) — e.g. Intro chat, Podcast recording"
+            value={form.title}
+            onChange={(e) => update("title", e.target.value)}
+          />
           <textarea
             className="min-h-24 w-full rounded-md border border-line bg-background p-3 text-sm outline-none focus:border-foreground"
             placeholder="What would you like to talk about?"

@@ -20,7 +20,9 @@ const schema = z.object({
     .regex(/^\+[0-9][0-9\s().-]{7,}$/, "Phone number with country code required")
     .max(40),
   purpose: z.string().trim().min(1).max(2000),
-  mode: z.enum(["meet", "zoom", "physical"]).default("meet"),
+  title: z.string().trim().max(140).optional().default(""),
+  isGroup: z.boolean().optional().default(false),
+  mode: z.enum(["meet", "physical"]).default("meet"),
   date: z.string().min(1),
   time: z.string().min(1),
   // Absolute instant for the chosen slot (resolved client-side from the owner's
@@ -73,12 +75,18 @@ export async function POST(req: Request) {
         email: data.email,
         phone: data.phone,
         purpose: data.purpose,
+        title: data.title,
+        isGroup: data.isGroup,
         mode: data.mode,
         requestedStart: start,
         requestedEnd: end,
         timezone: data.timezone || "Asia/Kolkata",
       },
     });
+
+    const meetingLabel = data.isGroup
+      ? "group meeting with Audarya"
+      : "meeting with Audarya";
 
     if (await emailConfigured()) {
       // Notify the admin
@@ -87,10 +95,11 @@ export async function POST(req: Request) {
           await sendEmail({
             to: process.env.ADMIN_EMAIL,
             replyTo: data.email,
-            subject: `New appointment request from ${data.name}`,
-            html: `<p><strong>${escapeHtml(data.name)}</strong> requested a ${
-              data.mode
-            } meeting.</p>
+            subject: `New meeting request from ${data.name}`,
+            html: `<p><strong>${escapeHtml(data.name)}</strong> requested a ${escapeHtml(
+              meetingLabel
+            )} (${data.mode === "physical" ? "in person" : "Google Meet"}).</p>
+            ${data.title ? `<p>Meeting: <strong>${escapeHtml(data.title)}</strong></p>` : ""}
             <p>When: ${formatDateTime(start)} IST (${data.duration} min)<br/>
             Their time: ${formatDateTimeInTz(start, data.timezone)}<br/>
             Contact: ${escapeHtml(data.email)}${
@@ -110,21 +119,23 @@ export async function POST(req: Request) {
         const brand = await getBrandAssets();
         await sendEmail({
           to: data.email,
-          subject: "Your appointment request was received",
+          subject: "Your meeting request was received",
           html: renderBrandedEmail({
             bannerUrl: brand.bannerUrl,
             signatureHtml: brand.signatureHtml,
             footer: true,
             preheader: `Requested for ${formatDateTimeInTz(start, data.timezone)}`,
             bodyHtml: `<p>Hi ${escapeHtml(data.name)},</p>
-<p>Thanks — your request for a <strong>${
-              data.mode === "physical" ? "in-person" : data.mode
-            } meeting</strong> on <strong>${formatDateTimeInTz(
+<p>Thanks — your request for a <strong>${escapeHtml(meetingLabel)}</strong>${
+              data.title ? ` (“${escapeHtml(data.title)}”)` : ""
+            } on <strong>${formatDateTimeInTz(
               start,
               data.timezone
             )}</strong> has been received.</p>
 <p>I review every request personally. Once I accept it, you&apos;ll get a
-confirmation with a calendar invite and the meeting details.</p>`,
+confirmation with a calendar invite${
+              data.mode === "physical" ? "" : " and a Google Meet link"
+            }.</p>`,
           }),
         });
       } catch {

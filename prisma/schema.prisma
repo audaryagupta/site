@@ -118,7 +118,9 @@ model Appointment {
   email          String
   phone          String   @default("")
   purpose        String   @default("")
-  mode           String   @default("meet") // meet | zoom | physical
+  title          String   @default("") // optional meeting name, shown on the calendar & emails
+  isGroup        Boolean  @default(false) // group meeting vs 1:1
+  mode           String   @default("meet") // meet | physical
   requestedStart DateTime
   requestedEnd   DateTime
   timezone       String   @default("Asia/Kolkata") // requester's chosen tz (for display)

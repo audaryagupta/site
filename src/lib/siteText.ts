@@ -140,7 +140,7 @@ export const SITE_TEXT_GROUPS: SiteTextGroup[] = [
       { id: "contact.message.heading", label: "Message form heading", default: "Send a message" },
       { id: "contact.message.sub", label: "Message form sub-text", default: "I read everything that comes in." },
       { id: "contact.book.heading", label: "Booking heading", default: "Book an appointment" },
-      { id: "contact.book.body", label: "Booking text", default: "Request a Google Meet, Zoom, or in-person meeting. Name, email, phone with country code, purpose, date, time and CAPTCHA are required so invitations and updates reach the right person.", multiline: true },
+      { id: "contact.book.body", label: "Booking text", default: "Request a Google Meet or in-person meeting with Audarya. Name, email, phone with country code, purpose, date, time and CAPTCHA are required so invitations and updates reach the right person.", multiline: true },
       { id: "contact.bookButton", label: "“Make an appointment” button", default: "Make an appointment" },
       { id: "contact.location", label: "Location line", default: "New Delhi, India" },
     ],

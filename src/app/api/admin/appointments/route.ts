@@ -3,8 +3,13 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { guard } from "@/lib/adminApi";
 import { createCalendarEvent, googleConfigured } from "@/lib/google";
-import { createZoomMeeting, zoomConfigured } from "@/lib/zoom";
 import { emailConfigured, sendEmail } from "@/lib/email";
+import {
+  getBrandAssets,
+  renderBrandedEmail,
+  emailButton,
+  emailButtonRow,
+} from "@/lib/emailTemplate";
 import { absoluteUrl, escapeHtml, formatDateTime } from "@/lib/utils";
 
 export async function GET() {
@@ -19,7 +24,9 @@ export async function GET() {
 const inviteSchema = z.object({
   name: z.string().trim().min(1).max(120),
   email: z.string().email(),
-  mode: z.enum(["meet", "zoom", "physical"]).default("meet"),
+  title: z.string().trim().max(140).optional().default(""),
+  isGroup: z.boolean().optional().default(false),
+  mode: z.enum(["meet", "physical"]).default("meet"),
   date: z.string().min(1),
   time: z.string().min(1),
   duration: z.number().int().min(15).max(240).default(30),
@@ -50,6 +57,11 @@ export async function POST(req: Request) {
   }
   const end = new Date(start.getTime() + data.duration * 60000);
 
+  const isOnline = data.mode !== "physical";
+  const meetingName =
+    data.title.trim() ||
+    `${data.isGroup ? "Group meeting" : "Meeting"} with ${data.name}`;
+
   let meetingLink: string | null = null;
   const location: string | null =
     data.mode === "physical" ? data.location : null;
@@ -57,30 +69,19 @@ export async function POST(req: Request) {
   const warnings: string[] = [];
 
   try {
-    if (data.mode === "zoom") {
-      if (zoomConfigured()) {
-        meetingLink = await createZoomMeeting({
-          topic: `Meeting with ${data.name}`,
-          start,
-          durationMinutes: data.duration,
-        });
-      } else {
-        warnings.push("Zoom not configured — no link generated.");
-      }
-    }
-
     if (await googleConfigured()) {
+      // Online meetings get a Google Meet link generated automatically.
       const result = await createCalendarEvent({
-        summary: `${data.mode === "physical" ? "Meeting" : "Call"} with ${data.name}`,
+        summary: meetingName,
         description: data.purpose,
         start,
         end,
         attendees: [data.email],
         location: location || undefined,
-        createMeet: data.mode === "meet",
+        createMeet: isOnline,
       });
       calendarEventId = result.eventId || null;
-      if (data.mode === "meet") meetingLink = result.meetLink;
+      if (isOnline) meetingLink = result.meetLink;
     } else {
       warnings.push("Google Calendar not connected — event not created.");
     }
@@ -93,6 +94,8 @@ export async function POST(req: Request) {
       name: data.name,
       email: data.email,
       purpose: data.purpose,
+      title: data.title,
+      isGroup: data.isGroup,
       mode: data.mode,
       requestedStart: start,
       requestedEnd: end,
@@ -104,20 +107,47 @@ export async function POST(req: Request) {
   });
 
   if (await emailConfigured()) {
-    const details =
-      data.mode === "physical"
-        ? `<p><strong>Where:</strong> ${escapeHtml(location || "TBC")}</p>`
-        : meetingLink
-          ? `<p><strong>Join:</strong> <a href="${meetingLink}">${meetingLink}</a></p>`
-          : "";
+    const rows: string[] = [
+      `<tr><td style="padding:4px 0;color:#6b6b66;width:96px;">When</td><td style="padding:4px 0;color:#1a1a18;"><strong>${formatDateTime(start)} IST</strong></td></tr>`,
+      `<tr><td style="padding:4px 0;color:#6b6b66;">Format</td><td style="padding:4px 0;color:#1a1a18;">${data.mode === "physical" ? "In person" : "Google Meet (video)"}</td></tr>`,
+    ];
+    if (data.mode === "physical") {
+      rows.push(
+        `<tr><td style="padding:4px 0;color:#6b6b66;">Where</td><td style="padding:4px 0;color:#1a1a18;">${escapeHtml(location || "TBC")}</td></tr>`
+      );
+    } else if (meetingLink) {
+      rows.push(
+        `<tr><td style="padding:4px 0;color:#6b6b66;">Join</td><td style="padding:4px 0;"><a href="${meetingLink}" style="color:#1a1a18;">${meetingLink}</a></td></tr>`
+      );
+    }
+    const details = `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:16px 0;padding:16px 18px;background:#f4f2ec;border-radius:12px;font-size:14px;line-height:1.5;">
+<tr><td colspan="2" style="padding-bottom:8px;font-family:Georgia,serif;font-size:16px;color:#1a1a18;"><strong>${escapeHtml(meetingName)}</strong></td></tr>
+${rows.join("\n")}
+</table>`;
     const cancelUrl = absoluteUrl(
       `/appointments/cancel?token=${appt.cancelToken}`
     );
+    const buttons = [
+      emailButton(cancelUrl, "Reschedule", "outline"),
+      emailButton(cancelUrl, "Cancel", "outline"),
+    ];
+    if (meetingLink) buttons.unshift(emailButton(meetingLink, "Join the meeting"));
     try {
+      const brand = await getBrandAssets();
       await sendEmail({
         to: data.email,
-        subject: "You're invited: appointment with Audarya",
-        html: `<p>Hi ${escapeHtml(data.name)},</p><p>I&apos;d like to meet on <strong>${formatDateTime(start)} IST</strong>.</p>${details}<p>The invite is on its way to your calendar. Looking forward to it.</p><p>— Audarya</p><p style="font-size:12px;color:#888">Can&apos;t make it? <a href="${cancelUrl}">Cancel this appointment</a>.</p>`,
+        subject: `You're invited: ${data.isGroup ? "group meeting" : "meeting"} with Audarya`,
+        html: renderBrandedEmail({
+          bannerUrl: brand.bannerUrl,
+          signatureHtml: brand.signatureHtml,
+          footer: true,
+          preheader: `${formatDateTime(start)} IST`,
+          bodyHtml: `<p>Hi ${escapeHtml(data.name)},</p>
+<p>I&apos;d like to invite you to a ${data.isGroup ? "group meeting" : "meeting"} with me. The details are below and a calendar invite is on its way.</p>
+${details}
+<p>Looking forward to it. If the time doesn&apos;t work, you can reschedule or cancel any time.</p>
+${emailButtonRow(buttons)}`,
+        }),
       });
     } catch {
       /* ignore */

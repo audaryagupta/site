@@ -9,6 +9,8 @@ interface Appt {
   email: string;
   phone: string;
   purpose: string;
+  title: string;
+  isGroup: boolean;
   mode: string;
   requestedStart: string;
   requestedEnd: string;
@@ -27,6 +29,8 @@ interface CalendarItem {
 const EMPTY_INVITE = {
   name: "",
   email: "",
+  title: "",
+  isGroup: false,
   mode: "meet",
   date: "",
   time: "",
@@ -49,6 +53,8 @@ export default function AppointmentsPage() {
     email: "",
     phone: "",
     purpose: "",
+    title: "",
+    isGroup: false,
     mode: "meet",
     location: "",
     date: "",
@@ -139,6 +145,8 @@ export default function AppointmentsPage() {
       email: a.email,
       phone: a.phone || "",
       purpose: a.purpose || "",
+      title: a.title || "",
+      isGroup: a.isGroup || false,
       mode: a.mode,
       location: a.location || "",
       date,
@@ -161,6 +169,8 @@ export default function AppointmentsPage() {
         email: editForm.email,
         phone: editForm.phone,
         purpose: editForm.purpose,
+        title: editForm.title,
+        isGroup: editForm.isGroup,
         mode: editForm.mode,
         location: editForm.location,
         requestedStart: start.toISOString(),
@@ -236,6 +246,12 @@ export default function AppointmentsPage() {
   const input =
     "h-9 w-full rounded-md border border-line bg-background px-3 text-sm outline-none focus:border-foreground";
 
+  function modeLabel(m: string) {
+    if (m === "physical") return "in person";
+    if (m === "meet") return "Google Meet";
+    return m;
+  }
+
   function renderEditForm(id: string) {
     return (
       <div className="mt-4 grid gap-3 border-t border-line pt-4 sm:grid-cols-2">
@@ -264,9 +280,24 @@ export default function AppointmentsPage() {
           onChange={(e) => setEditForm({ ...editForm, mode: e.target.value })}
         >
           <option value="meet">Google Meet</option>
-          <option value="zoom">Zoom</option>
           <option value="physical">In person</option>
         </select>
+        <input
+          className={input}
+          placeholder="Meeting name (optional)"
+          value={editForm.title}
+          onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+        />
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={editForm.isGroup}
+            onChange={(e) =>
+              setEditForm({ ...editForm, isGroup: e.target.checked })
+            }
+          />
+          Group meeting
+        </label>
         <input
           className={input}
           type="date"
@@ -336,10 +367,10 @@ export default function AppointmentsPage() {
     <div>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-semibold">Appointments</h1>
+          <h1 className="font-display text-2xl font-semibold">Meetings</h1>
           <p className="mt-1 text-sm text-muted">
-            Accept to auto-create the calendar event / meeting link and email
-            the requester. Reject to send a polite decline.
+            Accept to auto-create the calendar event, generate a Google Meet
+            link and email the guest. Reject to send a polite decline.
           </p>
         </div>
         <button
@@ -358,8 +389,8 @@ export default function AppointmentsPage() {
         >
           <h2 className="font-display text-lg font-semibold">Send an invite</h2>
           <p className="mt-1 text-sm text-muted">
-            Creates a confirmed appointment, generates the meeting link /
-            calendar event, and emails the invitee.
+            Creates a confirmed meeting with Audarya, generates a Google Meet
+            link + calendar event, and emails the invitee.
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <input
@@ -383,9 +414,24 @@ export default function AppointmentsPage() {
               onChange={(e) => setInvite({ ...invite, mode: e.target.value })}
             >
               <option value="meet">Google Meet</option>
-              <option value="zoom">Zoom</option>
               <option value="physical">In person</option>
             </select>
+            <input
+              className={input}
+              placeholder="Meeting name (optional)"
+              value={invite.title}
+              onChange={(e) => setInvite({ ...invite, title: e.target.value })}
+            />
+            <label className="flex items-center gap-2 text-sm sm:col-span-2">
+              <input
+                type="checkbox"
+                checked={invite.isGroup}
+                onChange={(e) =>
+                  setInvite({ ...invite, isGroup: e.target.checked })
+                }
+              />
+              Group meeting with Audarya
+            </label>
             <select
               className={input}
               value={invite.duration}
@@ -538,9 +584,17 @@ export default function AppointmentsPage() {
                       <p className="font-medium">
                         {a.name}{" "}
                         <span className="ml-1 rounded-full bg-subtle px-2 py-0.5 text-xs uppercase tracking-wide text-muted">
-                          {a.mode}
+                          {modeLabel(a.mode)}
                         </span>
+                        {a.isGroup && (
+                          <span className="ml-1 rounded-full bg-subtle px-2 py-0.5 text-xs uppercase tracking-wide text-muted">
+                            group
+                          </span>
+                        )}
                       </p>
+                      {a.title && (
+                        <p className="mt-0.5 text-sm font-medium">{a.title}</p>
+                      )}
                       <p className="mt-1 text-sm text-muted">
                         {a.email}
                         {a.phone ? ` · ${a.phone}` : ""}
@@ -632,9 +686,17 @@ export default function AppointmentsPage() {
                         <p className="font-medium">
                           {a.name}{" "}
                           <span className="ml-1 rounded-full bg-subtle px-2 py-0.5 text-xs uppercase tracking-wide text-muted">
-                            {a.mode}
+                            {modeLabel(a.mode)}
                           </span>
+                          {a.isGroup && (
+                            <span className="ml-1 rounded-full bg-subtle px-2 py-0.5 text-xs uppercase tracking-wide text-muted">
+                              group
+                            </span>
+                          )}
                         </p>
+                        {a.title && (
+                          <p className="mt-0.5 font-medium">{a.title}</p>
+                        )}
                         <p className="mt-1 text-muted">{fmt(a.requestedStart)}</p>
                         {a.location && (
                           <p className="mt-0.5 text-muted">📍 {a.location}</p>
@@ -662,7 +724,7 @@ export default function AppointmentsPage() {
                           onClick={() => {
                             if (
                               confirm(
-                                "Cancel this appointment and notify the guest?"
+                                "Cancel this meeting and notify the guest?"
                               )
                             )
                               act(a.id, "cancel");
@@ -703,7 +765,9 @@ export default function AppointmentsPage() {
                         <td className="px-4 py-3 text-muted">
                           {fmt(a.requestedStart)}
                         </td>
-                        <td className="px-4 py-3 text-muted">{a.mode}</td>
+                        <td className="px-4 py-3 text-muted">
+                          {modeLabel(a.mode)}
+                        </td>
                         <td className="px-4 py-3">
                           <span className="text-muted">{a.status}</span>
                         </td>

@@ -102,6 +102,41 @@ export async function getSentNewsletters() {
   });
 }
 
+export interface LatestRecapStory {
+  rank: number;
+  title: string;
+  summary: string;
+  category: string;
+  region: string;
+  source?: string;
+  url?: string;
+  imageUrl?: string;
+}
+
+// The news stories from the most recent Weekly Recap that actually went out,
+// so the public "Now" page can mirror what subscribers just received.
+export async function getLatestRecap(): Promise<{
+  id: string;
+  subject: string;
+  sentAt: Date | null;
+  stories: LatestRecapStory[];
+} | null> {
+  const nl = await prisma.newsletter.findFirst({
+    where: { status: "sent", type: "recap", NOT: { dataJson: null } },
+    orderBy: { sentAt: "desc" },
+  });
+  if (!nl || !nl.dataJson) return null;
+  let stories: LatestRecapStory[] = [];
+  try {
+    const parsed = JSON.parse(nl.dataJson) as { stories?: LatestRecapStory[] };
+    stories = (parsed.stories || []).slice(0, 10);
+  } catch {
+    stories = [];
+  }
+  if (!stories.length) return null;
+  return { id: nl.id, subject: nl.subject, sentAt: nl.sentAt, stories };
+}
+
 export async function getPublicAvailability() {
   // Weekly default windows the visitor can book (recurring, startDate == "").
   return prisma.availability.findMany({
