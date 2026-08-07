@@ -139,7 +139,17 @@ function addedLine(): string {
   return `<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:${MUTED};">Audarya added you to this newsletter — if we've crossed paths, through the old blog or otherwise, this is where the writing continues. You can unsubscribe anytime.</p>`;
 }
 
-function shell(inner: string, unsubUrl: string, preview: string) {
+function shell(
+  inner: string,
+  unsubUrl: string,
+  preview: string,
+  // Web/archive copies pass true to drop the Unsubscribe link — it's only
+  // meaningful (and required) in the actual delivered email.
+  hideUnsub = false
+) {
+  const unsubLine = hideUnsub
+    ? ""
+    : `\n<p style="margin:0;"><a href="${unsubUrl}" style="color:${MUTED};">Unsubscribe</a></p>`;
   return `<!doctype html><html><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="color-scheme" content="light"/></head>
@@ -150,8 +160,7 @@ function shell(inner: string, unsubUrl: string, preview: string) {
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:92%;background:#ffffff;border:1px solid ${LINE};border-radius:6px;overflow:hidden;">
 ${inner}
 <tr><td style="padding:24px 32px;border-top:1px solid ${LINE};color:${MUTED};font-size:12px;font-family:Arial,sans-serif;text-align:center;">
-<p style="margin:0 0 6px;">${site.name} — ${site.tagline}</p>
-<p style="margin:0;"><a href="${unsubUrl}" style="color:${MUTED};">Unsubscribe</a></p>
+<p style="margin:0 0 6px;">${site.name} — ${site.tagline}</p>${unsubLine}
 </td></tr>
 </table>
 </td></tr></table>
@@ -164,8 +173,9 @@ export function renderRecapEmail(opts: {
   data: RecapData;
   unsubUrl: string;
   addedNote?: boolean;
+  hideUnsub?: boolean;
 }) {
-  const { firstName, subject, data, unsubUrl, addedNote } = opts;
+  const { firstName, subject, data, unsubUrl, addedNote, hideUnsub } = opts;
   const greeting = firstName ? `Hey ${escapeHtml(firstName)},` : "Hey there,";
   const headingFont = pickHeadingFont(subject);
   const mood = moodOf(data.mood);
@@ -304,7 +314,7 @@ ${stories}
       : ""
   }<p style="margin:0;font-family:${headingFont};font-size:18px;color:${INK};">Loved compiling this for you!! — Audi</p></td></tr>`;
 
-  return shell(inner, unsubUrl, data.intro.slice(0, 140));
+  return shell(inner, unsubUrl, data.intro.slice(0, 140), hideUnsub);
 }
 
 export function renderGenericEmail(opts: {
@@ -314,8 +324,9 @@ export function renderGenericEmail(opts: {
   unsubUrl: string;
   previewText?: string;
   addedNote?: boolean;
+  hideUnsub?: boolean;
 }) {
-  const { firstName, subject, bodyHtml, unsubUrl, previewText, addedNote } =
+  const { firstName, subject, bodyHtml, unsubUrl, previewText, addedNote, hideUnsub } =
     opts;
   const greeting = firstName ? `<p style="margin:0 0 16px;font-size:16px;">Hi ${escapeHtml(firstName)},</p>` : "";
   const inner = `
@@ -327,5 +338,5 @@ ${greeting}
 ${addedNote ? addedLine() : ""}
 ${bodyHtml}
 </td></tr>`;
-  return shell(inner, unsubUrl, previewText || subject);
+  return shell(inner, unsubUrl, previewText || subject, hideUnsub);
 }

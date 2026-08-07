@@ -101,7 +101,14 @@ export async function createRecapDraft(opts?: {
     timeZone: "Asia/Kolkata",
   });
   const subject = `The Weekly Recap — ${dateLabel}`;
-  const previewHtml = renderRecapEmail({ subject, data, unsubUrl: "#" });
+  // This HTML is stored as `contentHtml` and shown on the public archive page,
+  // so it omits the Unsubscribe link (the delivered email adds it at send time).
+  const previewHtml = renderRecapEmail({
+    subject,
+    data,
+    unsubUrl: "#",
+    hideUnsub: true,
+  });
 
   const nl = await prisma.newsletter.create({
     data: {

@@ -15,6 +15,13 @@ export default async function NewsletterIssuePage({
   });
   if (!issue || issue.status !== "sent") notFound();
 
+  // The web/archive copy never shows an Unsubscribe link — strip it from any
+  // older stored issue that was rendered before this was the default.
+  const html = issue.contentHtml.replace(
+    /<p[^>]*>\s*<a[^>]*>\s*Unsubscribe\s*<\/a>\s*<\/p>/gi,
+    ""
+  );
+
   return (
     <Container className="max-w-3xl py-16">
       <p className="text-xs uppercase tracking-widest text-muted">
@@ -25,7 +32,7 @@ export default async function NewsletterIssuePage({
       </h1>
       <div
         className="prose-editorial mt-10"
-        dangerouslySetInnerHTML={{ __html: issue.contentHtml }}
+        dangerouslySetInnerHTML={{ __html: html }}
       />
     </Container>
   );
