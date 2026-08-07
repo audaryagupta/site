@@ -112,6 +112,11 @@ export async function verifyCaptcha(
   ip?: string
 ): Promise<boolean> {
   if (!token) return false;
+  // Accept a valid server-signed math challenge regardless of the active
+  // provider. The client falls back to it when the reCAPTCHA/Turnstile script
+  // fails to load (ad-blockers, network/region filtering), so the form is
+  // never left unsubmittable. The HMAC signature prevents forgery.
+  if (answer && verifyFallback(token, answer)) return true;
   const provider = captchaProvider();
   if (provider === "recaptcha") {
     return verifyRemote(
