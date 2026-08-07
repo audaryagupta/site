@@ -177,13 +177,15 @@ export async function generateRecap(): Promise<{
 
   const system = `You are the editor of "The Weekly Recap", a weekly newsletter by Audarya Gupta covering the most important news in business, finance and technology — both international and United States. You write with insight, concision and a warm personal voice.`;
 
-  const sourceGuidance = `Prefer highly reputable, widely-accessible, business/finance/tech-focused sources (e.g. Reuters, Associated Press, Financial Times, The Economist, Bloomberg, The Wall Street Journal, CNBC, MIT Technology Review, The Verge, TechCrunch, and official company/government/regulator press releases). Avoid low-quality, sensational, or politically-slanted general-news channels — specifically do NOT use BBC, Al Jazeera, Fox News, or similar politically-charged outlets. Every story MUST carry a real, direct link to the original source article so readers can click straight through.`;
+  const sourceGuidance = `Prefer highly reputable AND FREELY-ACCESSIBLE (no paywall) business/finance/tech sources whose article pages open in full without a subscription — e.g. Reuters, Associated Press, CNBC, The Verge, TechCrunch, Ars Technica, Yahoo Finance, and official company/government/regulator press releases. AVOID hard-paywalled outlets whose links dead-end at a subscription wall — do NOT link to The Wall Street Journal, Financial Times, Bloomberg, The Economist, The New York Times, or The Information. Also avoid sensational or politically-slanted general-news channels (no BBC, Al Jazeera, Fox News). Every story's "url" MUST be a real, direct link to the specific free article — never a homepage, never a search page.`;
+
+  const imageGuidance = `For "imageUrl", prefer the article's own photo. For 1-2 stories about a well-known company, person, product or place, you MAY instead use a real, stable Wikimedia Commons / Wikipedia image URL (must start with "https://upload.wikimedia.org/") to add colour — and set "source" to "Wikimedia Commons" for those. Only use an image URL you are confident is real; otherwise leave "imageUrl" as an empty string.`;
 
   const groundingBlock = grounded
-    ? `Here are candidate headlines from this week (JSON). Select and rank the 10 most important, mixing international and US stories across business, finance and tech. ${sourceGuidance} Use ONLY urls, sources and image links from this list. Do not invent URLs.\n\n${JSON.stringify(
+    ? `Here are candidate headlines from this week (JSON). Select and rank the 7 most important, mixing international and US stories across business, finance and tech. ${sourceGuidance} Use ONLY article urls and sources from this list (do not invent article URLs). ${imageGuidance}\n\n${JSON.stringify(
         news.slice(0, 60)
       )}`
-    : `No live headline feed is available. Use your knowledge to compile the 10 most likely-important themes in global and US business, finance and tech for the week of ${weekOf}. ${sourceGuidance} Leave "url" and "imageUrl" empty strings if you cannot be certain of a real link. Never fabricate specific URLs.`;
+    : `No live headline feed is available. Use your knowledge to compile the 7 most likely-important themes in global and US business, finance and tech for the week of ${weekOf}. ${sourceGuidance} Leave "url" empty if you cannot be certain of a real free article link. Never fabricate specific article URLs. ${imageGuidance}`;
 
   const user = `${groundingBlock}
 
@@ -204,12 +206,12 @@ Return a JSON object with this exact shape:
       "category": "Finance" | "Business" | "Tech",
       "region": "International" | "United States",
       "source": "publication name or empty",
-      "url": "real url or empty string",
+      "url": "real direct free-article url or empty string",
       "imageUrl": "real image url or empty string"
     }
   ]
 }
-Exactly 10 stories, ranked 1-10.`;
+Exactly 7 stories, ranked 1-7.`;
 
   const raw = await chat(system, user, { json: true, temperature: 0.5 });
   let parsed: RecapData;
@@ -224,6 +226,6 @@ Exactly 10 stories, ranked 1-10.`;
     };
   }
   if (!parsed.mood) parsed.mood = "interesting";
-  parsed.stories = (parsed.stories || []).slice(0, 10);
+  parsed.stories = (parsed.stories || []).slice(0, 7);
   return { data: parsed, grounded };
 }

@@ -120,6 +120,87 @@ def build_header(name, accent, soft, style):
     print("wrote", path, os.path.getsize(path), "bytes")
 
 
+# ---------------------------------------------------------------------------
+# Playful, COLOURFUL "mood of the week" GIFs (recap-fun-<mood>.gif). These sit
+# just under the intro — a light, characterful animation that sums up the week.
+# Unlike the monochrome header, these carry bright colour on purpose. They are
+# original artwork (fully free to reuse), so there are no licensing concerns.
+# ---------------------------------------------------------------------------
+FW, FH = 600, 200
+
+# (bg, face, [confetti colours], mouth-style) per mood.
+FUN = {
+    "slow": ((234, 244, 244), (244, 162, 89),
+             [(140, 179, 105), (244, 226, 133), (91, 142, 125), (244, 162, 89)],
+             "flat"),
+    "interesting": ((254, 246, 228), (245, 130, 174),
+                    [(245, 130, 174), (139, 211, 221), (249, 188, 96), (167, 134, 223)],
+                    "smile"),
+    "busy": ((255, 243, 240), (255, 107, 107),
+             [(255, 107, 107), (255, 209, 102), (6, 214, 160), (77, 150, 255)],
+             "open"),
+    "heavy": ((43, 43, 47), (246, 193, 119), [], "candle"),
+}
+
+
+def draw_face(d, cx, cy, r, face, mouth):
+    # head
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=face)
+    # eyes
+    er = max(2, r // 9)
+    ex = r // 2.4
+    ey = r // 4
+    for sx in (-1, 1):
+        d.ellipse([cx + sx * ex - er, cy - ey - er,
+                   cx + sx * ex + er, cy - ey + er], fill=(30, 28, 26))
+    # mouth
+    my = cy + r // 4
+    mw = r // 2
+    if mouth == "smile":
+        d.arc([cx - mw, my - mw, cx + mw, my + mw], 20, 160, fill=(30, 28, 26), width=3)
+    elif mouth == "open":
+        d.ellipse([cx - mw // 2, my - 2, cx + mw // 2, my + mw // 1.4], fill=(30, 28, 26))
+    else:  # flat
+        d.line([cx - mw // 1.6, my + mw // 2, cx + mw // 1.6, my + mw // 2],
+               fill=(30, 28, 26), width=3)
+
+
+def build_fun(mood, bg, face, confetti, mouth):
+    rnd = random.Random((hash("fun" + mood)) & 0xFFFF)
+    pieces = [
+        (rnd.randint(0, FW), rnd.randint(-FH, FH), rnd.choice(confetti) if confetti else bg,
+         rnd.randint(6, 13), rnd.uniform(3, 9), rnd.choice(["rect", "circ"]))
+        for _ in range(46 if confetti else 0)
+    ]
+    frames = []
+    for i in range(FRAMES):
+        img = Image.new("RGB", (FW, FH), bg)
+        d = ImageDraw.Draw(img)
+        for (x, y0, col, size, speed, shape) in pieces:
+            y = (y0 + i * speed) % (FH + 40) - 20
+            if shape == "rect":
+                d.rectangle([x, y, x + size, y + size], fill=col)
+            else:
+                d.ellipse([x, y, x + size, y + size], fill=col)
+        cx = FW // 2
+        if mouth == "candle":
+            # A gentle warm glow that softly pulses — respectful, not funny.
+            t = (math.sin((i / FRAMES) * 2 * math.pi) + 1) / 2
+            for rr in range(70, 8, -6):
+                a = (1 - rr / 70) * (0.5 + 0.3 * t)
+                d.ellipse([cx - rr, FH // 2 - rr, cx + rr, FH // 2 + rr],
+                          fill=lerp(bg, face, a))
+            d.ellipse([cx - 7, FH // 2 - 14, cx + 7, FH // 2 + 10], fill=(255, 244, 214))
+        else:
+            bounce = int(12 * math.sin((i / FRAMES) * 2 * math.pi))
+            draw_face(d, cx, FH // 2 + bounce, 52, face, mouth)
+        frames.append(img.convert("P", palette=Image.ADAPTIVE, colors=128))
+    path = os.path.join(OUT, f"recap-fun-{mood}.gif")
+    frames[0].save(path, save_all=True, append_images=frames[1:],
+                   duration=100, loop=0, optimize=True, disposal=2)
+    print("wrote", path, os.path.getsize(path), "bytes")
+
+
 def build_divider():
     """One monochrome shimmer bar shared by every issue (ink on cream)."""
     dw, dh = 600, 6
@@ -141,5 +222,7 @@ def build_divider():
 
 for name, accent, soft, style in THEMES:
     build_header(name, accent, soft, style)
+for mood, (bg, face, confetti, mouth) in FUN.items():
+    build_fun(mood, bg, face, confetti, mouth)
 build_divider()
 print("done")

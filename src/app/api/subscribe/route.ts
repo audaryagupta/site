@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { emailConfigured, sendEmail } from "@/lib/email";
-import { absoluteUrl, escapeHtml } from "@/lib/utils";
+import { renderGenericEmail } from "@/lib/newsletter";
+import { absoluteUrl } from "@/lib/utils";
 import { site } from "@/lib/site";
 import { isBlacklisted } from "@/lib/mailPolicy";
 
@@ -13,18 +14,21 @@ const schema = z.object({
 
 async function sendWelcome(email: string, firstName: string, unsubToken: string) {
   if (!(await emailConfigured())) return;
-  const hi = firstName ? ` ${escapeHtml(firstName)}` : "";
+  const bodyHtml = `<p>Welcome to the mailing list — I'm so glad you're here.</p>
+<p>My commitment is to send you one thoughtful Weekly Recap: the handful of stories that actually mattered in business, finance and tech, distilled into a five-minute read — plus the occasional personal essay. No spam, no noise, and you can unsubscribe anytime.</p>
+<p>Talk soon,</p>
+<p>— Audarya</p>`;
   try {
     await sendEmail({
       to: email,
       subject: `Welcome to ${site.name}`,
-      html: `<p>Hi${hi},</p>
-        <p>Thanks for subscribing to <strong>${site.name}</strong>. Every week you'll get the ten stories that actually mattered in finance, business and tech — internationally and in the US — distilled into a five-minute read.</p>
-        <p>You'll also occasionally hear from me with new essays.</p>
-        <p>— Audarya</p>
-        <p style="font-size:12px;color:#888">Not for you? <a href="${absoluteUrl(
-          `/unsubscribe?token=${unsubToken}`
-        )}">Unsubscribe anytime</a>.</p>`,
+      html: renderGenericEmail({
+        firstName,
+        subject: `Welcome to ${site.name}`,
+        bodyHtml,
+        previewText: "My commitment: one thoughtful weekly read — never spam.",
+        unsubUrl: absoluteUrl(`/api/unsubscribe?token=${unsubToken}`),
+      }),
     });
   } catch {
     /* best-effort */

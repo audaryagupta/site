@@ -6,13 +6,11 @@ function safeUrl(url?: string): string {
   return /^https?:\/\//i.test(url.trim()) ? url.trim() : "";
 }
 
-// Every story is guaranteed a working link: its own source URL when we have
-// one, otherwise a Google News search for the headline so readers can always
-// click through.
-function storyLink(title: string, url?: string): string {
-  const clean = safeUrl(url);
-  if (clean) return clean;
-  return `https://news.google.com/search?q=${encodeURIComponent(title)}`;
+// A story links through only when we have a real, direct article URL. We no
+// longer fall back to a Google News search — a missing/unsafe URL just means
+// the headline renders as plain text (never a paywall or a search page).
+function storyLink(url?: string): string {
+  return safeUrl(url);
 }
 
 // Each issue picks one heading font deterministically from its subject, so
@@ -82,14 +80,12 @@ const LINE = "#e3ddd0";
 // email stays black/white + cream and lets the photos carry all the colour.
 const CREAM = "#f1ece1";
 
-// Shown at the very top of the first few newsletters sent to people Audarya
-// added manually (e.g. merged from her old blog), so they know why they're
-// hearing from her.
-function addedBanner(): string {
-  return `<tr><td style="padding:20px 32px 0;">
-<div style="background:${INK};color:#ffffff;border-radius:6px;padding:14px 18px;">
-<p style="margin:0;font-family:Arial,sans-serif;font-size:14px;line-height:1.55;">Audarya Gupta has added you to the newsletter. If we've crossed paths — through the old blog or otherwise — this is where the writing continues. You can unsubscribe anytime.</p>
-</div></td></tr>`;
+// A soft, inline line (not a loud banner) shown on the first few newsletters
+// sent to people Audarya added manually (e.g. merged from her old blog), so
+// they know why they're hearing from her. Reads as part of the note, right
+// under the greeting.
+function addedLine(): string {
+  return `<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:${MUTED};">Audarya added you to this newsletter — if we've crossed paths, through the old blog or otherwise, this is where the writing continues. You can unsubscribe anytime.</p>`;
 }
 
 function shell(inner: string, unsubUrl: string, preview: string) {
@@ -123,6 +119,8 @@ export function renderRecapEmail(opts: {
   const headingFont = pickHeadingFont(subject);
   const mood = moodOf(data.mood);
   const headerGif = absoluteUrl(`/newsletter/recap-${mood}.gif`);
+  // A playful, colourful "mood of the week" GIF shown after the intro.
+  const funGif = absoluteUrl(`/newsletter/recap-fun-${mood}.gif`);
   const dividerGif = absoluteUrl(`/newsletter/divider.gif`);
 
   // Tiny caption crediting a photo source in small text.
@@ -134,15 +132,21 @@ export function renderRecapEmail(opts: {
       : "";
 
   const stories = data.stories
-    .slice(0, 10)
+    .slice(0, 7)
     .map((s) => {
-      const link = storyLink(s.title, s.url);
+      const link = storyLink(s.url);
       const imageUrl = safeUrl(s.imageUrl);
-      // The photo is the only colour on the card and clicking it (or the
-      // headline) goes straight to the story — no "read more" link.
+      // The photo is the only colour on the card. When we have a direct URL,
+      // the photo and headline click straight through; otherwise they stay
+      // plain (no "read more", no search fallback).
+      const headline = `<h2 style="margin:9px 0 8px;font-family:${headingFont};font-size:21px;line-height:1.25;">${escapeHtml(
+        s.title
+      )}</h2>`;
       const media = imageUrl
-        ? `<a href="${link}" style="text-decoration:none;"><img src="${imageUrl}" width="536" alt="" style="display:block;width:100%;border-radius:8px;border:1px solid ${LINE};margin-bottom:14px;"/></a>
-${photoCredit(s.source)}`
+        ? (link
+            ? `<a href="${link}" style="text-decoration:none;"><img src="${imageUrl}" width="536" alt="" style="display:block;width:100%;border-radius:8px;border:1px solid ${LINE};margin-bottom:14px;"/></a>`
+            : `<img src="${imageUrl}" width="536" alt="" style="display:block;width:100%;border-radius:8px;border:1px solid ${LINE};margin-bottom:14px;"/>`) +
+          `\n${photoCredit(s.source)}`
         : "";
       return `<tr><td style="padding:0 32px 30px;">
 ${media}
@@ -152,7 +156,7 @@ ${media}
 </td>
 <td valign="top">
 <span style="display:inline-block;background:${CREAM};color:${INK};font-family:Arial,sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:3px 10px;border-radius:999px;">${escapeHtml(s.category)} · ${escapeHtml(s.region)}</span>
-<a href="${link}" style="color:${INK};text-decoration:none;"><h2 style="margin:9px 0 8px;font-family:${headingFont};font-size:21px;line-height:1.25;">${escapeHtml(s.title)}</h2></a>
+${link ? `<a href="${link}" style="color:${INK};text-decoration:none;">${headline}</a>` : headline}
 <p style="margin:0;font-size:15px;line-height:1.6;color:${INK};">${escapeHtml(s.summary)}</p>
 ${
   !imageUrl && s.source
@@ -207,7 +211,6 @@ ${
       : "";
 
   const inner = `
-${addedNote ? addedBanner() : ""}
 <tr><td style="padding:0;"><img src="${headerGif}" width="600" alt="" style="display:block;width:100%;"/></td></tr>
 <tr><td style="padding:24px 32px 4px;text-align:center;">
 <p style="margin:0;font-family:Arial,sans-serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:${MUTED};">${MOODS[mood].kicker}&nbsp;&nbsp;The Weekly Recap</p>
@@ -215,13 +218,17 @@ ${addedNote ? addedBanner() : ""}
 </td></tr>
 <tr><td style="padding:18px 32px 10px;">
 <p style="margin:0 0 12px;font-size:16px;line-height:1.6;">${greeting}</p>
+${addedNote ? addedLine() : ""}
 <p style="margin:0;font-size:17px;line-height:1.7;color:${INK};">${escapeHtml(data.intro)}</p>
+</td></tr>
+<tr><td style="padding:6px 32px 16px;">
+<img src="${funGif}" width="536" alt="" style="display:block;width:100%;border-radius:8px;"/>
 </td></tr>
 ${note}
 ${featured}
 <tr><td style="padding:6px 32px 14px;">
 <img src="${dividerGif}" width="536" alt="" style="display:block;width:100%;margin-bottom:16px;"/>
-<p style="margin:0;font-family:${headingFont};font-size:14px;letter-spacing:2px;text-transform:uppercase;color:${INK};">The ten stories that mattered</p>
+<p style="margin:0;font-family:${headingFont};font-size:14px;letter-spacing:2px;text-transform:uppercase;color:${INK};">The stories that mattered</p>
 </td></tr>
 ${stories}
 <tr><td style="padding:2px 32px 30px;"><img src="${dividerGif}" width="536" alt="" style="display:block;width:100%;margin-bottom:18px;"/>${
@@ -247,12 +254,12 @@ export function renderGenericEmail(opts: {
     opts;
   const greeting = firstName ? `<p style="margin:0 0 16px;font-size:16px;">Hi ${escapeHtml(firstName)},</p>` : "";
   const inner = `
-${addedNote ? addedBanner() : ""}
 <tr><td style="padding:32px 32px 8px;">
 <h1 style="margin:0;font-size:28px;line-height:1.2;">${escapeHtml(subject)}</h1>
 </td></tr>
 <tr><td style="padding:16px 32px 28px;font-size:16px;line-height:1.7;color:${INK};">
 ${greeting}
+${addedNote ? addedLine() : ""}
 ${bodyHtml}
 </td></tr>`;
   return shell(inner, unsubUrl, previewText || subject);

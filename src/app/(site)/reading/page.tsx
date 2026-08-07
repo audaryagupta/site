@@ -6,10 +6,11 @@ import { formatDate } from "@/lib/utils";
 
 export const revalidate = 60;
 
-function recapLink(title: string, url?: string) {
+// Only link a headline when we have a real, direct article URL — no Google
+// News search fallback.
+function recapLink(url?: string): string {
   const u = (url || "").trim();
-  if (/^https?:\/\//i.test(u)) return u;
-  return `https://news.google.com/search?q=${encodeURIComponent(title)}`;
+  return /^https?:\/\//i.test(u) ? u : "";
 }
 
 export const metadata: Metadata = {
@@ -126,14 +127,20 @@ export default async function NowPage() {
                   <p className="text-[11px] font-medium uppercase tracking-widest text-muted">
                     {s.category} · {s.region}
                   </p>
-                  <a
-                    href={recapLink(s.title, s.url)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1 block font-display text-xl font-semibold leading-snug hover:opacity-80"
-                  >
-                    {s.title}
-                  </a>
+                  {recapLink(s.url) ? (
+                    <a
+                      href={recapLink(s.url)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 block font-display text-xl font-semibold leading-snug hover:opacity-80"
+                    >
+                      {s.title}
+                    </a>
+                  ) : (
+                    <p className="mt-1 block font-display text-xl font-semibold leading-snug">
+                      {s.title}
+                    </p>
+                  )}
                   <p className="mt-1.5 font-serif leading-relaxed text-muted">
                     {s.summary}
                   </p>
