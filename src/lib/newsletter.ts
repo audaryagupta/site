@@ -24,11 +24,52 @@ const HEADING_FONTS = [
   "'Helvetica Neue',Helvetica,Arial,sans-serif",
   "'Trebuchet MS','Segoe UI',Verdana,sans-serif",
 ];
-function pickHeadingFont(seedStr: string): string {
+
+// Stable string hash → used to pick assets deterministically per issue so the
+// same email always renders identically, but different issues differ.
+function seededHash(seedStr: string): number {
   let h = 0;
-  for (let i = 0; i < seedStr.length; i++) h = (h * 31 + seedStr.charCodeAt(i)) >>> 0;
-  return HEADING_FONTS[h % HEADING_FONTS.length];
+  for (let i = 0; i < seedStr.length; i++)
+    h = (h * 31 + seedStr.charCodeAt(i)) >>> 0;
+  return h;
 }
+function pickFrom<T>(arr: T[], seedStr: string): T {
+  return arr[seededHash(seedStr) % arr.length];
+}
+function pickHeadingFont(seedStr: string): string {
+  return pickFrom(HEADING_FONTS, seedStr);
+}
+
+// A short key that changes every calendar week (IST) so a Friday recap and a
+// mid-week recap in the SAME week — and week-to-week issues — pick different
+// GIFs. Two issues only collide if they share a week AND an identical subject.
+function weekKey(now: Date = new Date()): string {
+  const ist = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  );
+  const start = new Date(ist.getFullYear(), 0, 1);
+  const week = Math.floor(
+    (ist.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000)
+  );
+  return `${ist.getFullYear()}-W${week}`;
+}
+
+// GIF pools. The "mood of the week" meme rotates through the whole pool per
+// issue (this is the one that used to repeat every week); the header banner
+// rotates too. Selection is seeded by subject + week so it varies but is
+// deterministic for a given send.
+// "heavy" assets are reserved for genuinely heavy weeks and kept OUT of the
+// normal rotation so a sombre meme never lands on an ordinary week.
+const HEADER_GIFS = [
+  "/newsletter/recap-slow.gif",
+  "/newsletter/recap-interesting.gif",
+  "/newsletter/recap-busy.gif",
+];
+const FUN_GIFS = [
+  "/newsletter/recap-fun-slow.gif",
+  "/newsletter/recap-fun-interesting.gif",
+  "/newsletter/recap-fun-busy.gif",
+];
 
 // The week's mood drives the header GIF + a short kicker line. Politicians'
 // deaths never make a week "heavy" — only a legendary global cultural icon.
@@ -119,9 +160,19 @@ export function renderRecapEmail(opts: {
   const greeting = firstName ? `Hey ${escapeHtml(firstName)},` : "Hey there,";
   const headingFont = pickHeadingFont(subject);
   const mood = moodOf(data.mood);
-  const headerGif = absoluteUrl(`/newsletter/recap-${mood}.gif`);
+  // Rotate the GIFs per issue (seeded by subject + week) so consecutive recaps
+  // — and two issues in the same week — never reuse the same meme. A "heavy"
+  // week still keeps its sombre banner/meme; other weeks rotate freely.
+  const gifSeed = `${subject}|${weekKey()}`;
+  const headerGif = absoluteUrl(
+    mood === "heavy" ? "/newsletter/recap-heavy.gif" : pickFrom(HEADER_GIFS, gifSeed)
+  );
   // A playful, colourful "mood of the week" GIF shown after the intro.
-  const funGif = absoluteUrl(`/newsletter/recap-fun-${mood}.gif`);
+  const funGif = absoluteUrl(
+    mood === "heavy"
+      ? "/newsletter/recap-fun-heavy.gif"
+      : pickFrom(FUN_GIFS, `fun|${gifSeed}`)
+  );
   const dividerGif = absoluteUrl(`/newsletter/divider.gif`);
 
   // Tiny caption crediting a photo source in small text.
