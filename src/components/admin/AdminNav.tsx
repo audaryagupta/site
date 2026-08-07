@@ -57,8 +57,9 @@ const groups: NavGroup[] = [
       { href: "/admin/compose", label: "Compose email", icon: Send },
       { href: "/admin/now", label: "Now page", icon: Sparkles },
       { href: "/admin/site-text", label: "Site text", icon: Type, ownerOnly: true },
-      { href: "/admin/games", label: "Games", icon: Gamepad2 },
       { href: "/admin/links", label: "Link hub", icon: Link2 },
+      { href: "/admin/games", label: "Games", icon: Gamepad2 },
+      { href: "/admin/letterhead", label: "Letterhead", icon: FileSignature },
     ],
   },
   {
@@ -86,22 +87,11 @@ const groups: NavGroup[] = [
     ],
   },
   {
-    label: "Personal",
-    icon: Target,
+    label: "Settings",
+    icon: Settings,
     links: [
       { href: "/admin/goals", label: "Goals", icon: Target, ownerOnly: true },
       { href: "/admin/bookshelf", label: "My Bookshelf", icon: BookOpen, ownerOnly: true },
-    ],
-  },
-  {
-    label: "Tools",
-    icon: FileSignature,
-    links: [{ href: "/admin/letterhead", label: "Letterhead", icon: FileSignature }],
-  },
-  {
-    label: "Admin",
-    icon: Settings,
-    links: [
       { href: "/admin/email", label: "Email", icon: AtSign, ownerOnly: true },
       { href: "/admin/access", label: "Access", icon: UserCog, ownerOnly: true },
       { href: "/admin/launch", label: "Launch", icon: Rocket, ownerOnly: true },

@@ -8,85 +8,97 @@ export interface CaptchaValue {
   answer: string;
 }
 
+type RenderFn = (
+  el: HTMLElement,
+  opts: {
+    sitekey: string;
+    callback: (token: string) => void;
+    "expired-callback"?: () => void;
+    "error-callback"?: () => void;
+    theme?: string;
+  }
+) => string;
+
 declare global {
   interface Window {
-    turnstile?: {
-      render: (
-        el: HTMLElement,
-        opts: {
-          sitekey: string;
-          callback: (token: string) => void;
-          "expired-callback"?: () => void;
-          theme?: string;
-        }
-      ) => string;
-    };
+    turnstile?: { render: RenderFn };
+    grecaptcha?: { render: RenderFn };
   }
 }
 
-const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+type Config =
+  | { mode: "recaptcha" | "turnstile"; sitekey: string }
+  | { mode: "fallback"; question: string; token: string }
+  | null;
+
+const PROVIDERS = {
+  recaptcha: {
+    src: "https://www.google.com/recaptcha/api.js?render=explicit",
+    global: "grecaptcha" as const,
+    id: "g-recaptcha-script",
+  },
+  turnstile: {
+    src: "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit",
+    global: "turnstile" as const,
+    id: "cf-turnstile-script",
+  },
+};
 
 export function Captcha({
   onChange,
 }: {
   onChange: (v: CaptchaValue) => void;
 }) {
-  const useTurnstile = Boolean(SITE_KEY);
+  const [config, setConfig] = useState<Config>(null);
+  const [answer, setAnswer] = useState("");
   const widgetRef = useRef<HTMLDivElement>(null);
   const rendered = useRef(false);
-  const [question, setQuestion] = useState("");
-  const [token, setToken] = useState("");
-  const [answer, setAnswer] = useState("");
 
-  // Fallback challenge: fetch a math question + signed token.
+  // Resolve the active provider (+ site key or fallback challenge) from the server.
   useEffect(() => {
-    if (useTurnstile) return;
     fetch("/api/captcha")
       .then((r) => r.json())
-      .then((d) => {
-        if (d.mode === "fallback") {
-          setQuestion(d.question);
-          setToken(d.token);
-        }
-      })
+      .then((d: Config) => setConfig(d))
       .catch(() => {});
-  }, [useTurnstile]);
+  }, []);
 
-  // Turnstile widget.
+  // Render the reCAPTCHA / Turnstile widget once its script is ready.
   useEffect(() => {
-    if (!useTurnstile || rendered.current) return;
-    const id = "cf-turnstile-script";
-    function renderWidget() {
-      if (!widgetRef.current || !window.turnstile || rendered.current) return;
+    if (!config || config.mode === "fallback" || rendered.current) return;
+    const p = PROVIDERS[config.mode];
+    const sitekey = config.sitekey;
+
+    function tryRender() {
+      const api = window[p.global];
+      if (!widgetRef.current || !api || rendered.current) return false;
       rendered.current = true;
-      window.turnstile.render(widgetRef.current, {
-        sitekey: SITE_KEY!,
-        callback: (t: string) => {
-          setToken(t);
-          onChange({ token: t, answer: "turnstile" });
-        },
-        "expired-callback": () => {
-          setToken("");
-          onChange({ token: "", answer: "" });
-        },
+      api.render(widgetRef.current, {
+        sitekey,
+        callback: (t: string) => onChange({ token: t, answer: config!.mode }),
+        "expired-callback": () => onChange({ token: "", answer: "" }),
+        "error-callback": () => onChange({ token: "", answer: "" }),
       });
+      return true;
     }
-    if (!document.getElementById(id)) {
+
+    if (!document.getElementById(p.id)) {
       const s = document.createElement("script");
-      s.id = id;
-      s.src =
-        "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      s.id = p.id;
+      s.src = p.src;
       s.async = true;
       s.defer = true;
-      s.onload = renderWidget;
       document.head.appendChild(s);
-    } else {
-      renderWidget();
     }
+    if (tryRender()) return;
+    // Poll until the provider's API attaches (script load timing varies).
+    const timer = setInterval(() => {
+      if (tryRender()) clearInterval(timer);
+    }, 200);
+    return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useTurnstile]);
+  }, [config]);
 
-  if (useTurnstile) {
+  if (config && config.mode !== "fallback") {
     return <div ref={widgetRef} className="min-h-[65px]" />;
   }
 
@@ -96,7 +108,9 @@ export function Captcha({
         <ShieldCheck size={13} /> Verify you&apos;re human
       </label>
       <div className="flex items-center gap-3">
-        <span className="text-sm">{question || "Loading…"}</span>
+        <span className="text-sm">
+          {config?.mode === "fallback" ? config.question : "Loading…"}
+        </span>
         <input
           className="h-11 w-24 rounded-md border border-line bg-background px-3 text-sm outline-none focus:border-foreground"
           inputMode="numeric"
@@ -104,7 +118,10 @@ export function Captcha({
           value={answer}
           onChange={(e) => {
             setAnswer(e.target.value);
-            onChange({ token, answer: e.target.value });
+            onChange({
+              token: config?.mode === "fallback" ? config.token : "",
+              answer: e.target.value,
+            });
           }}
         />
       </div>

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { cx } from "@/lib/utils";
 import { Captcha, type CaptchaValue } from "./Captcha";
+import { PhoneInput } from "./PhoneInput";
 
 type Window = {
   kind: string;
@@ -582,18 +583,13 @@ export function AppointmentBooker({
             />
           </div>
           <div>
-            <input
-              className={input}
-              type="tel"
-              placeholder="Phone with country code (e.g. +91 98765 43210)"
-              required
-              pattern="^\\+[0-9][0-9\\s().-]{7,}$"
+            <PhoneInput
               value={form.phone}
-              onChange={(e) => update("phone", e.target.value)}
+              onChange={(v) => update("phone", v)}
             />
             <p className="mt-1 text-xs text-muted">
-              Include the country code so confirmations and changes can reach
-              the right number.
+              Pick your country code so confirmations and changes reach the
+              right number.
             </p>
           </div>
           <textarea

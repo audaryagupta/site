@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
-import { issueFallbackChallenge, turnstileConfigured } from "@/lib/captcha";
+import { captchaClientConfig } from "@/lib/captcha";
 
-// Returns a challenge for the fallback (no-Turnstile) CAPTCHA. When Turnstile
-// is configured the client renders its widget instead and this returns nothing
-// to solve.
+// Never cache: the fallback issues a fresh signed challenge per request, and
+// the active provider/site key is resolved from runtime env.
+export const dynamic = "force-dynamic";
+
+// Returns the active CAPTCHA config for the client to render the matching
+// widget: reCAPTCHA/Turnstile site key, or a signed math challenge fallback.
 export async function GET() {
-  if (turnstileConfigured()) {
-    return NextResponse.json({ mode: "turnstile" });
-  }
-  const challenge = issueFallbackChallenge();
-  return NextResponse.json({ mode: "fallback", ...challenge });
+  return NextResponse.json(captchaClientConfig());
 }
