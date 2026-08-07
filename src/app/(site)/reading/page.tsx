@@ -51,7 +51,11 @@ export default async function NowPage() {
       <p className="mt-5 font-serif text-lg text-muted">{intro}</p>
 
       {items.length === 0 ? (
-        <p className="mt-10 text-muted">This page is being curated. Check back soon.</p>
+        !recap && (
+          <p className="mt-10 text-muted">
+            This page is being curated. Check back soon.
+          </p>
+        )
       ) : (
         <div className="mt-12 space-y-12">
           {order
@@ -124,6 +128,15 @@ export default async function NowPage() {
                   {s.rank}
                 </span>
                 <div className="min-w-0">
+                  {s.imageUrl && /^https?:\/\//i.test(s.imageUrl) && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={s.imageUrl}
+                      alt=""
+                      className="mb-3 w-full rounded-lg border border-line object-cover"
+                      style={{ maxHeight: 240 }}
+                    />
+                  )}
                   <p className="text-[11px] font-medium uppercase tracking-widest text-muted">
                     {s.category} · {s.region}
                   </p>

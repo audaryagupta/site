@@ -222,7 +222,12 @@ def build_divider():
 
 for name, accent, soft, style in THEMES:
     build_header(name, accent, soft, style)
-for mood, (bg, face, confetti, mouth) in FUN.items():
-    build_fun(mood, bg, face, confetti, mouth)
+
+# The "mood of the week" GIFs (recap-fun-<mood>.gif): for slow / interesting /
+# busy these are small, clean, curated MEME gifs (Winnie the Pooh, Shaq shimmy,
+# Kermit typing) downloaded once and committed to the repo — this script does
+# NOT regenerate them so re-running never clobbers them. Only "heavy" uses a
+# generated, respectful candle glow (no meme for a week where an icon passed).
+build_fun("heavy", *FUN["heavy"])
 build_divider()
 print("done")

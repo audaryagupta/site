@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
 import { quoteRounds as staticRounds, type QuoteRound } from "./quotes";
+import { withTopicImages } from "./topicImages";
 
 /**
  * Builds "Who said it?" rounds from the admin-managed quote bank: each round is
@@ -129,7 +130,7 @@ export async function getLatestRecap(): Promise<{
   let stories: LatestRecapStory[] = [];
   try {
     const parsed = JSON.parse(nl.dataJson) as { stories?: LatestRecapStory[] };
-    stories = (parsed.stories || []).slice(0, 10);
+    stories = withTopicImages((parsed.stories || []).slice(0, 7));
   } catch {
     stories = [];
   }

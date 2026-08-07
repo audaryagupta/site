@@ -10,7 +10,8 @@ import {
   emailButton,
   emailButtonRow,
 } from "@/lib/emailTemplate";
-import { absoluteUrl, escapeHtml, formatDateTime } from "@/lib/utils";
+import { absoluteUrl, escapeHtml, formatDateTimeInTz } from "@/lib/utils";
+import { DEFAULT_TIMEZONE, zonedWallTimeToUtc } from "@/lib/timezones";
 
 export async function GET() {
   const g = await guard();
@@ -31,6 +32,8 @@ const inviteSchema = z.object({
   mode: z.enum(["meet", "physical"]).default("meet"),
   date: z.string().min(1),
   time: z.string().min(1),
+  // IANA zone the chosen date/time is expressed in (defaults to IST).
+  timezone: z.string().trim().min(1).max(64).optional().default(DEFAULT_TIMEZONE),
   duration: z.number().int().min(15).max(240).default(30),
   purpose: z.string().trim().max(2000).optional().default(""),
   location: z.string().trim().max(240).optional().default(""),
@@ -52,8 +55,8 @@ export async function POST(req: Request) {
     );
   }
 
-  // Interpret the chosen date/time as IST (Asia/Kolkata).
-  const start = new Date(`${data.date}T${data.time}:00+05:30`);
+  // Interpret the chosen date/time as wall-clock in the selected zone.
+  const start = zonedWallTimeToUtc(`${data.date}T${data.time}`, data.timezone);
   if (isNaN(start.getTime())) {
     return NextResponse.json({ error: "Invalid date or time." }, { status: 400 });
   }
@@ -123,7 +126,7 @@ export async function POST(req: Request) {
 
   if (await emailConfigured()) {
     const rows: string[] = [
-      `<tr><td style="padding:4px 0;color:#6b6b66;width:96px;">When</td><td style="padding:4px 0;color:#1a1a18;"><strong>${formatDateTime(start)} IST</strong></td></tr>`,
+      `<tr><td style="padding:4px 0;color:#6b6b66;width:96px;">When</td><td style="padding:4px 0;color:#1a1a18;"><strong>${formatDateTimeInTz(start, data.timezone)}</strong></td></tr>`,
       `<tr><td style="padding:4px 0;color:#6b6b66;">Format</td><td style="padding:4px 0;color:#1a1a18;">${data.mode === "physical" ? "In person" : "Google Meet (video)"}</td></tr>`,
     ];
     if (guests.length) {
@@ -163,7 +166,7 @@ ${rows.join("\n")}
           bannerUrl: brand.bannerUrl,
           signatureHtml: brand.signatureHtml,
           footer: true,
-          preheader: `${formatDateTime(start)} IST`,
+          preheader: `${formatDateTimeInTz(start, data.timezone)}`,
           bodyHtml: `<p>Hi ${escapeHtml(data.name)},</p>
 <p>I&apos;d like to invite you to a ${data.isGroup ? "group meeting" : "meeting"} with me. The details are below and a calendar invite is on its way.</p>
 ${details}

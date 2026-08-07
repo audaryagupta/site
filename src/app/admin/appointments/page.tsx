@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Check, Pencil, Send, Trash2, X } from "lucide-react";
+import { TIMEZONES, DEFAULT_TIMEZONE } from "@/lib/timezones";
 
 interface Appt {
   id: string;
@@ -36,6 +37,7 @@ const EMPTY_INVITE = {
   mode: "meet",
   date: "",
   time: "",
+  timezone: DEFAULT_TIMEZONE,
   duration: 30,
   purpose: "",
   location: "",
@@ -543,6 +545,20 @@ export default function AppointmentsPage() {
               value={invite.time}
               onChange={(e) => setInvite({ ...invite, time: e.target.value })}
             />
+            <select
+              className={`${input} sm:col-span-2`}
+              value={invite.timezone}
+              onChange={(e) =>
+                setInvite({ ...invite, timezone: e.target.value })
+              }
+              title="The date & time above are in this timezone; invitees see it converted."
+            >
+              {TIMEZONES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
             {invite.mode === "physical" && (
               <input
                 className={`${input} sm:col-span-2`}

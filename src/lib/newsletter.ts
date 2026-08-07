@@ -1,5 +1,6 @@
 import { site } from "./site";
 import { escapeHtml, absoluteUrl } from "./utils";
+import { withTopicImages } from "./topicImages";
 
 function safeUrl(url?: string): string {
   if (!url) return "";
@@ -131,8 +132,7 @@ export function renderRecapEmail(opts: {
         )}</p>`
       : "";
 
-  const stories = data.stories
-    .slice(0, 7)
+  const stories = withTopicImages(data.stories.slice(0, 7))
     .map((s) => {
       const link = storyLink(s.url);
       const imageUrl = safeUrl(s.imageUrl);
@@ -221,8 +221,8 @@ ${
 ${addedNote ? addedLine() : ""}
 <p style="margin:0;font-size:17px;line-height:1.7;color:${INK};">${escapeHtml(data.intro)}</p>
 </td></tr>
-<tr><td style="padding:6px 32px 16px;">
-<img src="${funGif}" width="536" alt="" style="display:block;width:100%;border-radius:8px;"/>
+<tr><td style="padding:2px 32px 14px;text-align:center;">
+<img src="${funGif}" width="240" alt="" style="display:inline-block;width:240px;max-width:70%;border-radius:8px;"/>
 </td></tr>
 ${note}
 ${featured}
