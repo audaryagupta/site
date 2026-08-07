@@ -108,6 +108,48 @@ function isBlockedSource(name?: string, url?: string): boolean {
   return BLOCKED_SOURCES.some((s) => hay.includes(s));
 }
 
+// "No bad news": drop headlines that are fundamentally about tragedy, violence,
+// death, war or disaster. Kept deliberately narrow so ordinary business/tech
+// news (a stock "crash", a product "kill", layoffs) still comes through.
+const BAD_NEWS_PATTERNS = [
+  /\bkilled\b/,
+  /\bkilling\b/,
+  /\bdead\b/,
+  /\bdeath(s)?\b/,
+  /\bdies\b/,
+  /\bdied\b/,
+  /\bmurder/,
+  /\bshooting\b/,
+  /\bshot dead\b/,
+  /\bstabb/,
+  /\bterror/,
+  /\bmassacre\b/,
+  /\bwar\b/,
+  /\bwarfare\b/,
+  /\bairstrike/,
+  /\bmissile\b/,
+  /\bbombing\b/,
+  /\bgenocide\b/,
+  /\bhostage/,
+  /\bearthquake\b/,
+  /\btsunami\b/,
+  /\bwildfire\b/,
+  /\bhurricane\b/,
+  /\bfloods?\b/,
+  /\bplane crash\b/,
+  /\bcrash(es)? kill/,
+  /\bfatal\b/,
+  /\bcasualt/,
+  /\brape\b/,
+  /\babuse\b/,
+  /\bsuicide\b/,
+];
+
+function isBadNews(title?: string, description?: string): boolean {
+  const hay = `${title || ""} ${description || ""}`.toLowerCase();
+  return BAD_NEWS_PATTERNS.some((re) => re.test(hay));
+}
+
 async function fetchNews(): Promise<
   { title: string; description: string; url: string; image?: string; source?: string }[]
 > {
@@ -147,6 +189,7 @@ async function fetchNews(): Promise<
         for (const a of data.articles || []) {
           if (!a.title || !a.url) continue;
           if (isBlockedSource(a.source?.name, a.url)) continue;
+          if (isBadNews(a.title, a.description)) continue;
           all.push({
             title: a.title,
             description: a.description || "",
@@ -179,15 +222,17 @@ export async function generateRecap(): Promise<{
 
   const system = `You are the editor of "The Weekly Recap", a weekly newsletter by Audarya Gupta covering the most important news in business, finance and technology — both international and United States. You write with insight, concision and a warm personal voice.`;
 
-  const sourceGuidance = `Prefer highly reputable AND FREELY-ACCESSIBLE (no paywall) business/finance/tech sources whose article pages open in full without a subscription — e.g. Reuters, Associated Press, CNBC, The Verge, TechCrunch, Ars Technica, Yahoo Finance, and official company/government/regulator press releases. AVOID hard-paywalled outlets whose links dead-end at a subscription wall — do NOT link to The Wall Street Journal, Financial Times, Bloomberg, The Economist, The New York Times, or The Information. Also avoid sensational or politically-slanted general-news channels (no BBC, Al Jazeera, Fox News). Every story's "url" MUST be a real, direct link to the specific free article — never a homepage, never a search page.`;
+  const sourceGuidance = `ONLY use highly reputable AND FREELY-ACCESSIBLE (no paywall) business/finance/tech sources whose article pages open in full without a subscription — e.g. Reuters, Associated Press, CNBC, The Verge, TechCrunch, Ars Technica, Yahoo Finance, and official company/government/regulator press releases. AVOID hard-paywalled outlets whose links dead-end at a subscription wall — do NOT link to The Wall Street Journal, Financial Times, Bloomberg, The Economist, The New York Times, or The Information. NEVER use the BBC (bbc.com / bbc.co.uk) under any circumstances — it is blacklisted. Also avoid sensational or politically-slanted general-news channels (Al Jazeera, Fox News, tabloids, blogs). Every story's "url" MUST be a real, direct link to the specific free article — never a homepage, never a search page.`;
+
+  const toneGuidance = `This is a POSITIVE, forward-looking business/finance/tech briefing — NO BAD NEWS. Do NOT include stories that are fundamentally about death, violence, war, crime, terrorism, disasters, tragedy or human suffering. Focus on markets, companies, deals, products, innovation, policy and the economy. If a week's only notable events are grim, prefer quieter constructive stories over tragic ones.`;
 
   const imageGuidance = `Always leave "imageUrl" as an empty string — do not supply any image. Open-license photos are added automatically after the fact, so never include a photo URL yourself.`;
 
   const groundingBlock = grounded
-    ? `Here are candidate headlines from this week (JSON). Select and rank the 7 most important, mixing international and US stories across business, finance and tech. ${sourceGuidance} Use ONLY article urls and sources from this list (do not invent article URLs). ${imageGuidance}\n\n${JSON.stringify(
+    ? `Here are candidate headlines from this week (JSON). Select and rank the 7 most important, mixing international and US stories across business, finance and tech. ${sourceGuidance} ${toneGuidance} Use ONLY article urls and sources from this list (do not invent article URLs). ${imageGuidance}\n\n${JSON.stringify(
         news.slice(0, 60)
       )}`
-    : `No live headline feed is available. Use your knowledge to compile the 7 most likely-important themes in global and US business, finance and tech for the week of ${weekOf}. ${sourceGuidance} Leave "url" empty if you cannot be certain of a real free article link. Never fabricate specific article URLs. ${imageGuidance}`;
+    : `No live headline feed is available. Use your knowledge to compile the 7 most likely-important themes in global and US business, finance and tech for the week of ${weekOf}. ${sourceGuidance} ${toneGuidance} Leave "url" empty if you cannot be certain of a real free article link. Never fabricate specific article URLs. ${imageGuidance}`;
 
   const user = `${groundingBlock}
 

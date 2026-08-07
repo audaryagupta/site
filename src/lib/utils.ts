@@ -119,6 +119,9 @@ export function directArticleUrl(u?: string): string {
     "news.yahoo.com",
     "t.co",
     "lnkd.in",
+    // Explicitly blacklisted source.
+    "bbc.com",
+    "bbc.co.uk",
   ];
   if (bannedHosts.some((h) => host === h || host.endsWith(`.${h}`))) return "";
   const path = parsed.pathname.toLowerCase();
