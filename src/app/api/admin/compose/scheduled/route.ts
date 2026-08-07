@@ -30,15 +30,13 @@ export async function GET() {
   });
 }
 
-// Cancel a pending scheduled email.
+// Remove a scheduled/draft/recent email from the list. Deleting a still-pending
+// row also stops it from ever being sent (the cron won't find it).
 export async function DELETE(req: Request) {
   const g = await guard();
   if (g) return g;
   const id = new URL(req.url).searchParams.get("id") || "";
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
-  await prisma.scheduledEmail.updateMany({
-    where: { id, status: "scheduled" },
-    data: { status: "canceled" },
-  });
+  await prisma.scheduledEmail.deleteMany({ where: { id } });
   return NextResponse.json({ ok: true });
 }

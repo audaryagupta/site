@@ -144,7 +144,15 @@ export function Composer({ ownerEmail }: { ownerEmail: string }) {
     if (!isTest && data.sent > 0 && failed === 0) resetForm();
   }
 
-  async function cancelScheduled(id: string) {
+  async function deleteScheduled(id: string, pending: boolean) {
+    if (
+      !confirm(
+        pending
+          ? "Cancel and delete this scheduled email? It won't be sent."
+          : "Delete this entry from the list?"
+      )
+    )
+      return;
     await fetch(`/api/admin/compose/scheduled?id=${id}`, { method: "DELETE" });
     refreshScheduled();
   }
@@ -282,15 +290,15 @@ export function Composer({ ownerEmail }: { ownerEmail: string }) {
               >
                 <div className="flex items-start justify-between gap-2">
                   <span className="font-medium">{s.subject || "(no subject)"}</span>
-                  {s.status === "scheduled" && (
-                    <button
-                      onClick={() => cancelScheduled(s.id)}
-                      title="Cancel"
-                      className="text-muted hover:text-red-600"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  )}
+                  <button
+                    onClick={() =>
+                      deleteScheduled(s.id, s.status === "scheduled")
+                    }
+                    title={s.status === "scheduled" ? "Cancel & delete" : "Delete"}
+                    className="text-muted hover:text-red-600"
+                  >
+                    <Trash2 size={13} />
+                  </button>
                 </div>
                 <div className="mt-1 text-muted">
                   {s.count} recipient(s) ·{" "}
