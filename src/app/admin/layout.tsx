@@ -23,7 +23,10 @@ export default async function AdminLayout({
   return (
     <AuthProvider>
       <div className="flex min-h-screen bg-background">
-        <AdminNav email={session.user?.email} />
+        <AdminNav
+          email={session.user?.email}
+          role={(session.user as { role?: string })?.role}
+        />
         <div className="flex-1 overflow-x-hidden">
           <div className="mx-auto max-w-5xl px-8 py-10">{children}</div>
         </div>

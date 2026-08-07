@@ -33,12 +33,13 @@ async function run(req: Request) {
   }
 
   const { data } = await generateRecap();
+  // The recap is scheduled for Friday 8:00 AM US Eastern (see fly.toml / cron).
   const dateLabel = new Date().toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
-    timeZone: "Asia/Kolkata",
+    timeZone: "America/New_York",
   });
-  const subject = `The Friday Recap — ${dateLabel}`;
+  const subject = `The Weekly Recap — ${dateLabel}`;
   const previewHtml = renderRecapEmail({ subject, data, unsubUrl: "#" });
 
   // Draft is created in "pending_approval" — nothing is sent to subscribers.
@@ -55,12 +56,12 @@ async function run(req: Request) {
   });
 
   // Notify Audarya to review & approve.
-  if (emailConfigured() && process.env.ADMIN_EMAIL) {
+  if (await emailConfigured() && process.env.ADMIN_EMAIL) {
     try {
       await sendEmail({
         to: process.env.ADMIN_EMAIL,
         subject: `[Approve] ${subject} is ready for review`,
-        html: `<p>This week's Friday Recap draft is ready.</p>
+        html: `<p>This week's Weekly Recap draft is ready.</p>
         <p>Review, edit and approve it before it goes out:</p>
         <p><a href="${absoluteUrl(
           `/admin/newsletters/${nl.id}`

@@ -2,8 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Loader2, Sparkles, Wand2 } from "lucide-react";
+import { Loader2, Sparkles, Wand2, X } from "lucide-react";
 import { Editor } from "./Editor";
+import { UploadButton } from "./UploadButton";
 import { cx } from "@/lib/utils";
 
 export interface ArticleDraft {
@@ -22,6 +23,9 @@ export interface ArticleDraft {
   featured: boolean;
   seoTitle: string;
   seoDescription: string;
+  audioUrl: string;
+  publishedAt?: string | null; // YYYY-MM-DD (IST) for the date input
+  notifiedAt?: string | null;
 }
 
 const LANGS = [
@@ -42,6 +46,35 @@ export function ArticleEditor({ initial }: { initial: ArticleDraft }) {
   const [showTranslation, setShowTranslation] = useState(
     Boolean(initial.translationHtml)
   );
+  const [notifiedAt, setNotifiedAt] = useState<string | null>(
+    initial.notifiedAt ?? null
+  );
+  const [notifying, setNotifying] = useState(false);
+  const [notifyMsg, setNotifyMsg] = useState("");
+
+  async function notifySubscribers() {
+    if (
+      !confirm(
+        "Email all active subscribers about this article now? This can only be done once per article."
+      )
+    )
+      return;
+    setNotifying(true);
+    setNotifyMsg("");
+    try {
+      const res = await fetch(`/api/admin/articles/${draft.id}/notify`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not send");
+      setNotifiedAt(new Date().toISOString());
+      setNotifyMsg(`Sent to ${data.sent} subscriber(s).`);
+    } catch (e) {
+      setNotifyMsg((e as Error).message);
+    } finally {
+      setNotifying(false);
+    }
+  }
 
   function set<K extends keyof ArticleDraft>(k: K, v: ArticleDraft[K]) {
     setDraft((d) => ({ ...d, [k]: v }));
@@ -262,6 +295,33 @@ export function ArticleEditor({ initial }: { initial: ArticleDraft }) {
           </div>
         </div>
 
+        {draft.id && draft.status === "published" && (
+          <div className="rounded-lg border border-line bg-card p-4">
+            <h3 className="text-sm font-medium">Subscriber notification</h3>
+            <p className="mt-1 text-xs text-muted">
+              Optional. If you don&apos;t notify, this piece still appears on the
+              site and can be featured in the Weekly Recap.
+            </p>
+            {notifiedAt ? (
+              <p className="mt-3 text-xs text-muted">
+                Subscribers were notified on{" "}
+                {new Date(notifiedAt).toLocaleDateString()}.
+              </p>
+            ) : (
+              <button
+                onClick={notifySubscribers}
+                disabled={notifying}
+                className="mt-3 h-10 w-full rounded-md border border-line text-sm font-medium transition hover:bg-subtle disabled:opacity-50"
+              >
+                {notifying ? "Sending…" : "Notify subscribers"}
+              </button>
+            )}
+            {notifyMsg && (
+              <p className="mt-2 text-xs text-muted">{notifyMsg}</p>
+            )}
+          </div>
+        )}
+
         <Field label="Topics (comma-separated)">
           <input
             className={input}
@@ -302,6 +362,41 @@ export function ArticleEditor({ initial }: { initial: ArticleDraft }) {
           )}
         </Field>
 
+        <Field label="Your narration (audio)">
+          <p className="mb-2 text-xs text-muted">
+            Optional. Upload yourself reading the piece aloud — a player appears
+            next to the article.
+          </p>
+          {draft.audioUrl ? (
+            <div className="space-y-2">
+              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+              <audio controls src={draft.audioUrl} className="w-full" />
+              <div className="flex items-center gap-3">
+                <UploadButton
+                  kind="audio"
+                  accept="audio/*"
+                  label="Replace"
+                  onDone={(url) => set("audioUrl", url)}
+                />
+                <button
+                  type="button"
+                  onClick={() => set("audioUrl", "")}
+                  className="inline-flex items-center gap-1 text-xs text-muted hover:text-foreground"
+                >
+                  <X size={13} /> Remove
+                </button>
+              </div>
+            </div>
+          ) : (
+            <UploadButton
+              kind="audio"
+              accept="audio/*"
+              label="Upload narration"
+              onDone={(url) => set("audioUrl", url)}
+            />
+          )}
+        </Field>
+
         <Field label="Cover image credit">
           <input
             className={input}
@@ -326,6 +421,19 @@ export function ArticleEditor({ initial }: { initial: ArticleDraft }) {
             onChange={(e) => set("slug", e.target.value)}
             placeholder="auto from title"
           />
+        </Field>
+
+        <Field label="Publish date">
+          <input
+            type="date"
+            className={input}
+            value={draft.publishedAt || ""}
+            onChange={(e) => set("publishedAt", e.target.value)}
+          />
+          <p className="mt-1 text-xs text-muted">
+            Back-date pieces written long ago; controls the date shown and the
+            order on the site.
+          </p>
         </Field>
 
         <label className="flex items-center gap-2 text-sm">

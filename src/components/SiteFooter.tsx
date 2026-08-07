@@ -4,17 +4,20 @@ import { Container } from "./Container";
 import { SocialIcons } from "./SocialIcons";
 import { SubscribeForm } from "./SubscribeForm";
 import { EasterEggs } from "./EasterEggs";
+import { Logo } from "./Logo";
+import { StudioEntry } from "./StudioEntry";
+import { getSiteContent, pickText, pickStr } from "@/lib/siteContent";
+import { TAGLINE_DEFAULT } from "@/lib/siteText";
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  const content = await getSiteContent();
+  const tagline = pickText(content, "global.tagline", TAGLINE_DEFAULT).text;
   return (
     <footer className="mt-24 border-t border-line bg-subtle/60">
       <Container className="grid gap-12 py-14 md:grid-cols-[1.5fr_1fr_1.5fr]">
         <div>
-          <p className="font-display text-xl">
-            <span className="italic">by</span>{" "}
-            <span className="tracking-[0.18em]">AUDARYA</span>
-          </p>
-          <p className="mt-3 max-w-xs text-sm text-muted">{site.tagline}.</p>
+          <Logo className="h-9" />
+          <p className="mt-3 max-w-xs text-sm text-muted">{tagline}.</p>
           <div className="mt-5">
             <SocialIcons size={18} />
           </div>
@@ -22,7 +25,7 @@ export function SiteFooter() {
 
         <div>
           <h4 className="text-xs uppercase tracking-widest text-muted">
-            Explore
+            {pickStr(content, "footer.explore.heading", "Explore")}
           </h4>
           <ul className="mt-4 space-y-2 text-sm">
             {site.nav.map((n) => (
@@ -37,11 +40,10 @@ export function SiteFooter() {
 
         <div>
           <h4 className="text-xs uppercase tracking-widest text-muted">
-            The Friday Recap
+            {pickStr(content, "footer.recap.heading", "The Weekly Recap")}
           </h4>
           <p className="mt-4 text-sm text-muted">
-            The week&apos;s ten best stories in finance, business & tech —
-            curated, every Friday.
+            {pickStr(content, "footer.recap.body", "The week's ten best stories in finance, business & tech — curated, every week.")}
           </p>
           <div className="mt-4">
             <SubscribeForm compact />
@@ -51,10 +53,24 @@ export function SiteFooter() {
 
       <div className="border-t border-line">
         <Container className="flex flex-col items-center justify-between gap-2 py-5 text-xs text-muted sm:flex-row">
-          <p>© {new Date().getFullYear()} byAudarya. All rights reserved.</p>
+          <p>
+            © {new Date().getFullYear()} byAudarya. All rights reserved.
+            {/* hidden easter-egg entry point */}
+            <Link
+              href="/the-signal"
+              aria-hidden="true"
+              tabIndex={-1}
+              className="ml-1 opacity-0 transition-opacity hover:opacity-40"
+            >
+              ✦
+            </Link>
+          </p>
           <div className="flex items-center gap-4">
             <Link href="/privacy" className="hover:text-foreground">
-              Privacy
+              Privacy Policy
+            </Link>
+            <Link href="/terms" className="hover:text-foreground">
+              Terms
             </Link>
             <a
               href={`mailto:${site.email}`}
@@ -62,6 +78,7 @@ export function SiteFooter() {
             >
               {site.email}
             </a>
+            <StudioEntry />
           </div>
         </Container>
       </div>

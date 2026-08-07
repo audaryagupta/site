@@ -18,7 +18,7 @@ export default async function NewsletterIssuePage({
   return (
     <Container className="max-w-3xl py-16">
       <p className="text-xs uppercase tracking-widest text-muted">
-        The Friday Recap · {formatDate(issue.sentAt)}
+        The Weekly Recap · {formatDate(issue.sentAt)}
       </p>
       <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight">
         {issue.subject}

@@ -14,7 +14,7 @@ export default function UnsubscribePage({
       <p className="mt-4 font-serif text-lg text-muted">
         {ok
           ? "You won't receive any more emails. If this was a mistake, you can resubscribe anytime from the newsletter page."
-          : "That unsubscribe link looks invalid or expired. Write to audarya@venturebuz.com and I'll sort it out."}
+          : "That unsubscribe link looks invalid or expired. Write to audarya@byaudarya.com and I'll sort it out."}
       </p>
     </Container>
   );

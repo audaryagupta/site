@@ -28,6 +28,37 @@ export function formatDateTime(date: Date | string | null | undefined): string {
   });
 }
 
+/**
+ * Format an instant in an arbitrary IANA timezone, appending a short zone
+ * abbreviation. Used for requester-facing appointment emails so times read in
+ * the visitor's own timezone (falls back to IST).
+ */
+export function formatDateTimeInTz(
+  date: Date | string | null | undefined,
+  timeZone: string = TIMEZONE
+): string {
+  if (!date) return "";
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return "";
+  const tz = timeZone || TIMEZONE;
+  const main = d.toLocaleString("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: tz,
+  });
+  let abbr = "";
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      timeZoneName: "short",
+    }).formatToParts(d);
+    abbr = parts.find((p) => p.type === "timeZoneName")?.value || "";
+  } catch {
+    /* ignore */
+  }
+  return abbr ? `${main} (${abbr})` : main;
+}
+
 export function estimateReadingMinutes(html: string): number {
   const text = html.replace(/<[^>]*>/g, " ");
   const words = text.trim().split(/\s+/).filter(Boolean).length;

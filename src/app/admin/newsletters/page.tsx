@@ -101,7 +101,7 @@ export default function NewslettersPage() {
             ) : (
               <Sparkles size={15} />
             )}
-            Generate Friday Recap
+            Generate Weekly Recap
           </button>
           <button
             onClick={() => createGeneric("general")}
@@ -134,7 +134,7 @@ export default function NewslettersPage() {
         <p className="text-muted">Loading…</p>
       ) : list.length === 0 ? (
         <p className="text-muted">
-          No newsletters yet. Generate a Friday Recap to get started.
+          No newsletters yet. Generate a Weekly Recap to get started.
         </p>
       ) : (
         <div className="overflow-hidden rounded-lg border border-line bg-card">

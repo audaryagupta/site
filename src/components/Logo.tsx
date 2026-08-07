@@ -10,29 +10,37 @@ import { cx } from "@/lib/utils";
  * component will use it automatically. Until the file exists it renders a
  * styled fallback wordmark that matches the "by AUDARYA" mark.
  */
-export function Logo({ className }: { className?: string }) {
+/**
+ * The brand mark on its own (no link wrapper) so it can be dropped anywhere the
+ * brand name would otherwise be typed — including inside other links. Pass
+ * `imgClassName` to control the logo image size (defaults to h-8).
+ */
+export function LogoMark({
+  className,
+  imgClassName,
+}: {
+  className?: string;
+  imgClassName?: string;
+}) {
   const [showImage, setShowImage] = useState(true);
+  const img = cx("w-auto", imgClassName || "h-8");
 
   return (
-    <Link
-      href="/"
-      aria-label="byAudarya home"
-      className={cx("group inline-flex items-baseline gap-1.5", className)}
-    >
+    <span className={cx("inline-flex items-baseline gap-1.5", className)}>
       {showImage ? (
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo.png"
             alt="byAudarya"
-            className="h-8 w-auto dark:hidden"
+            className={cx(img, "dark:hidden")}
             onError={() => setShowImage(false)}
           />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo-dark.png"
             alt="byAudarya"
-            className="hidden h-8 w-auto dark:block"
+            className={cx(img, "hidden dark:block")}
             onError={(e) => {
               // Fall back to the light logo in dark mode if no dark variant.
               (e.currentTarget as HTMLImageElement).src = "/logo.png";
@@ -47,6 +55,18 @@ export function Logo({ className }: { className?: string }) {
           </span>
         </>
       )}
+    </span>
+  );
+}
+
+export function Logo({ className }: { className?: string }) {
+  return (
+    <Link
+      href="/"
+      aria-label="byAudarya home"
+      className={cx("group inline-flex items-baseline", className)}
+    >
+      <LogoMark />
     </Link>
   );
 }

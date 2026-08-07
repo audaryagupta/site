@@ -4,12 +4,16 @@ import type { Metadata } from "next";
 import { Container } from "@/components/Container";
 import { ArticleBody } from "@/components/ArticleBody";
 import { ShareButtons } from "@/components/ShareButtons";
-import { ViewCounter } from "@/components/ViewCounter";
+import { ArticleEngagement } from "@/components/ArticleEngagement";
+import { ArticleAudio } from "@/components/ArticleAudio";
 import { ArticleCard } from "@/components/ArticleCard";
+import { Comments } from "@/components/Comments";
+import { JsonLd } from "@/components/JsonLd";
 import { getArticleBySlug, getRelatedArticles } from "@/lib/queries";
 import { formatDate } from "@/lib/utils";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { site } from "@/lib/site";
+import { jsonLdGraph, articleSchema } from "@/lib/seo";
 
 export const revalidate = 60;
 
@@ -23,10 +27,12 @@ export async function generateMetadata({
   return {
     title: article.seoTitle || article.title,
     description: article.seoDescription || article.excerpt,
+    alternates: { canonical: `/writings/${article.slug}` },
     openGraph: {
       title: article.title,
       description: article.excerpt,
       type: "article",
+      url: `/writings/${article.slug}`,
       images: article.coverImage ? [{ url: article.coverImage }] : undefined,
     },
   };
@@ -47,7 +53,18 @@ export default async function ArticlePage({
 
   return (
     <article>
-      <ViewCounter slug={article.slug} />
+      <JsonLd
+        data={jsonLdGraph(
+          articleSchema({
+            title: article.title,
+            description: article.excerpt,
+            slug: article.slug,
+            publishedAt: article.publishedAt,
+            updatedAt: article.updatedAt,
+            coverImage: article.coverImage,
+          })
+        )}
+      />
 
       {/* Header */}
       <Container className="max-w-3xl pt-14 text-center">
@@ -69,6 +86,14 @@ export default async function ArticlePage({
           By {site.author} · {formatDate(article.publishedAt)} ·{" "}
           {article.readingMinutes} min read
         </p>
+        <div className="mt-4">
+          <ArticleEngagement
+            slug={article.slug}
+            views={article.views + article.viewsBoost}
+            likes={article.likes + article.likesBoost}
+          />
+        </div>
+        {article.audioUrl && <ArticleAudio src={article.audioUrl} />}
       </Container>
 
       {/* Cover */}
@@ -113,6 +138,8 @@ export default async function ArticlePage({
             ← All writings
           </Link>
         </div>
+
+        <Comments slug={article.slug} />
       </Container>
 
       {/* Related */}
