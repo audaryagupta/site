@@ -64,11 +64,20 @@ const HEADER_GIFS = [
   "/newsletter/recap-slow.gif",
   "/newsletter/recap-interesting.gif",
   "/newsletter/recap-busy.gif",
+  "/newsletter/recap-hdr-gen-1.gif",
+  "/newsletter/recap-hdr-gen-2.gif",
+  "/newsletter/recap-hdr-gen-3.gif",
 ];
 const FUN_GIFS = [
   "/newsletter/recap-fun-slow.gif",
   "/newsletter/recap-fun-interesting.gif",
   "/newsletter/recap-fun-busy.gif",
+  "/newsletter/recap-fun-gen-1.gif",
+  "/newsletter/recap-fun-gen-2.gif",
+  "/newsletter/recap-fun-gen-3.gif",
+  "/newsletter/recap-fun-gen-4.gif",
+  "/newsletter/recap-fun-gen-5.gif",
+  "/newsletter/recap-fun-gen-6.gif",
 ];
 
 // The week's mood drives the header GIF + a short kicker line. Politicians'
@@ -192,7 +201,7 @@ export function renderRecapEmail(opts: {
       // The photo is the only colour on the card. When we have a direct URL,
       // the photo and headline click straight through; otherwise they stay
       // plain (no "read more", no search fallback).
-      const headline = `<h2 style="margin:9px 0 8px;font-family:${headingFont};font-size:21px;line-height:1.25;">${escapeHtml(
+      const headline = `<h2 style="margin:9px 0 8px;font-family:${headingFont};font-size:21px;line-height:1.25;overflow-wrap:break-word;word-break:break-word;">${escapeHtml(
         s.title
       )}</h2>`;
       // Kept as a small, fixed-size thumbnail so photos never dominate the
@@ -210,10 +219,10 @@ ${media}
 <td valign="top" width="42" style="padding-right:12px;">
 <div style="width:30px;height:30px;border-radius:50%;background:${INK};color:#ffffff;text-align:center;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;line-height:30px;">${s.rank}</div>
 </td>
-<td valign="top">
+<td valign="top" style="overflow-wrap:break-word;word-break:break-word;">
 <span style="display:inline-block;background:${CREAM};color:${INK};font-family:Arial,sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:3px 10px;border-radius:999px;">${escapeHtml(s.category)} · ${escapeHtml(s.region)}</span>
 ${link ? `<a href="${link}" style="color:${INK};text-decoration:none;">${headline}</a>` : headline}
-<p style="margin:0;font-size:15px;line-height:1.6;color:${INK};">${escapeHtml(s.summary)}</p>
+<p style="margin:0;font-size:15px;line-height:1.6;color:${INK};overflow-wrap:break-word;word-break:break-word;">${escapeHtml(s.summary)}</p>
 ${
   !imageUrl && s.source
     ? `<p style="margin:8px 0 0;font-family:Arial,sans-serif;font-size:10px;color:${MUTED};">Source: ${escapeHtml(
@@ -250,7 +259,7 @@ ${data.featured
       : "";
     return `<div style="margin-bottom:18px;">
 ${img}
-<a href="${url}" style="color:${INK};text-decoration:none;"><h2 style="margin:0 0 6px;font-family:${headingFont};font-size:19px;line-height:1.3;">${escapeHtml(
+<a href="${url}" style="color:${INK};text-decoration:none;"><h2 style="margin:0 0 6px;font-family:${headingFont};font-size:19px;line-height:1.3;overflow-wrap:break-word;word-break:break-word;">${escapeHtml(
       f.title
     )}</h2></a>
 ${
@@ -269,8 +278,8 @@ ${
   const inner = `
 <tr><td style="padding:0;"><img src="${headerGif}" width="600" alt="" style="display:block;width:100%;"/></td></tr>
 <tr><td style="padding:24px 32px 4px;text-align:center;">
-<p style="margin:0;font-family:Arial,sans-serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:${MUTED};">${MOODS[mood].kicker}&nbsp;&nbsp;The Weekly Recap</p>
-<h1 style="margin:10px 0 0;font-family:${headingFont};font-size:32px;line-height:1.12;color:${INK};">${escapeHtml(subject)}</h1>
+<p style="margin:0;font-family:Arial,sans-serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:${MUTED};">${MOODS[mood].kicker} &middot; The Weekly Recap</p>
+<h1 style="margin:10px 0 0;font-family:${headingFont};font-size:30px;line-height:1.15;color:${INK};overflow-wrap:break-word;word-break:break-word;">${escapeHtml(subject)}</h1>
 </td></tr>
 <tr><td style="padding:18px 32px 10px;">
 <p style="margin:0 0 12px;font-size:16px;line-height:1.6;">${greeting}</p>

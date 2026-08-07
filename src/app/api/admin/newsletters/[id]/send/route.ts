@@ -123,8 +123,8 @@ export async function POST(
       email: s.email,
       firstName: s.firstName,
       token: s.unsubToken,
-      // Owner-added folks get the "Audarya added you" note on their first
-      // four newsletters (welcomeRemaining counts down after each send).
+      // Owner-added folks get the "Audarya added you" note exactly ONCE — on
+      // the first newsletter they receive; it's turned off right after.
       addedNote: s.addedByOwner && s.welcomeRemaining > 0,
     }));
   }
@@ -145,18 +145,18 @@ export async function POST(
     };
   });
 
-  // Decrement the welcome-note counter only for subscribers that actually
-  // received this newsletter (skip ones whose send errored).
+  // Turn the welcome-note off after the first newsletter a subscriber actually
+  // receives (skip ones whose send errored), so it's shown exactly once.
   const failedEmails = new Set(errors.map((e) => e.email));
-  const toDecrement = recipients.filter(
+  const toClear = recipients.filter(
     (r) => r.id && r.addedNote && !failedEmails.has(r.email)
   );
-  if (toDecrement.length) {
+  if (toClear.length) {
     await prisma.$transaction(
-      toDecrement.map((r) =>
+      toClear.map((r) =>
         prisma.subscriber.update({
           where: { id: r.id },
-          data: { welcomeRemaining: { decrement: 1 } },
+          data: { welcomeRemaining: 0 },
         })
       )
     );
