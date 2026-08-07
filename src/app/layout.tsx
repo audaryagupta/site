@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
-import { Fraunces, Inter, Newsreader } from "next/font/google";
+import { Inter, Lora } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { site } from "@/lib/site";
+import { jsonLdGraph, websiteSchema, personSchema } from "@/lib/seo";
 
-const display = Fraunces({
+// Editorial/corporate system: Lora serif for display headings and long-form
+// prose (--font-display / --font-serif), Inter for UI and body sans text.
+const display = Lora({
   subsets: ["latin"],
   variable: "--font-display",
-  weight: ["400", "500", "600", "700", "900"],
-  style: ["normal", "italic"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -18,19 +20,18 @@ const sans = Inter({
   display: "swap",
 });
 
-const serif = Newsreader({
+const serif = Lora({
   subsets: ["latin"],
   variable: "--font-serif",
-  weight: ["400", "500", "600"],
-  style: ["normal", "italic"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: {
-    default: `${site.name} — ${site.tagline}`,
-    template: `%s — ${site.name}`,
+    default: `${site.name} | The Personal Blog of Audarya Gupta`,
+    template: `%s | ${site.name}`,
   },
   description: site.description,
   openGraph: {
@@ -52,6 +53,12 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');}catch(e){}})();`,
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: jsonLdGraph(websiteSchema(), personSchema()),
           }}
         />
       </head>

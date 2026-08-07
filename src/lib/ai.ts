@@ -1,5 +1,7 @@
 import { getOpenAI, OPENAI_MODEL } from "./openai";
 import type { RecapData } from "./newsletter";
+import { withTopicImages } from "./topicImages";
+import { directArticleUrl } from "./utils";
 
 async function chat(
   system: string,
@@ -82,6 +84,30 @@ export async function translateHtml(
 
 /* -------------------- Weekly news recap -------------------- */
 
+// Outlets to exclude from the recap — overly political / general-news channels.
+const BLOCKED_SOURCES = [
+  "bbc",
+  "al jazeera",
+  "aljazeera",
+  "fox news",
+  "foxnews",
+  "breitbart",
+  "the daily wire",
+  "dailywire",
+  "msnbc",
+  "newsmax",
+  "one america",
+  "oann",
+  "rt.com",
+  "russia today",
+  "sputnik",
+];
+
+function isBlockedSource(name?: string, url?: string): boolean {
+  const hay = `${name || ""} ${url || ""}`.toLowerCase();
+  return BLOCKED_SOURCES.some((s) => hay.includes(s));
+}
+
 async function fetchNews(): Promise<
   { title: string; description: string; url: string; image?: string; source?: string }[]
 > {
@@ -120,6 +146,7 @@ async function fetchNews(): Promise<
         };
         for (const a of data.articles || []) {
           if (!a.title || !a.url) continue;
+          if (isBlockedSource(a.source?.name, a.url)) continue;
           all.push({
             title: a.title,
             description: a.description || "",
@@ -150,20 +177,29 @@ export async function generateRecap(): Promise<{
     timeZone: "Asia/Kolkata",
   });
 
-  const system = `You are the editor of "The Friday Recap", a weekly newsletter by Audarya Gupta covering the most important news in business, finance and technology — both international and United States. You write with insight, concision and a warm personal voice.`;
+  const system = `You are the editor of "The Weekly Recap", a weekly newsletter by Audarya Gupta covering the most important news in business, finance and technology — both international and United States. You write with insight, concision and a warm personal voice.`;
+
+  const sourceGuidance = `Prefer highly reputable AND FREELY-ACCESSIBLE (no paywall) business/finance/tech sources whose article pages open in full without a subscription — e.g. Reuters, Associated Press, CNBC, The Verge, TechCrunch, Ars Technica, Yahoo Finance, and official company/government/regulator press releases. AVOID hard-paywalled outlets whose links dead-end at a subscription wall — do NOT link to The Wall Street Journal, Financial Times, Bloomberg, The Economist, The New York Times, or The Information. Also avoid sensational or politically-slanted general-news channels (no BBC, Al Jazeera, Fox News). Every story's "url" MUST be a real, direct link to the specific free article — never a homepage, never a search page.`;
+
+  const imageGuidance = `Always leave "imageUrl" as an empty string — do not supply any image. Open-license photos are added automatically after the fact, so never include a photo URL yourself.`;
 
   const groundingBlock = grounded
-    ? `Here are candidate headlines from this week (JSON). Select and rank the 10 most important, mixing international and US stories across business, finance and tech. Use ONLY urls, sources and image links from this list. Do not invent URLs.\n\n${JSON.stringify(
+    ? `Here are candidate headlines from this week (JSON). Select and rank the 7 most important, mixing international and US stories across business, finance and tech. ${sourceGuidance} Use ONLY article urls and sources from this list (do not invent article URLs). ${imageGuidance}\n\n${JSON.stringify(
         news.slice(0, 60)
       )}`
-    : `No live headline feed is available. Use your knowledge to compile the 10 most likely-important themes in global and US business, finance and tech for the week of ${weekOf}. Leave "url" and "imageUrl" empty strings if you cannot be certain of a real link. Never fabricate specific URLs.`;
+    : `No live headline feed is available. Use your knowledge to compile the 7 most likely-important themes in global and US business, finance and tech for the week of ${weekOf}. ${sourceGuidance} Leave "url" empty if you cannot be certain of a real free article link. Never fabricate specific article URLs. ${imageGuidance}`;
 
   const user = `${groundingBlock}
 
+Write the intro in Audarya's first-person voice. It MUST open by naming the mood of the week in a natural way, then say what caught her attention — e.g. "It was a slow week — but a few things still had my attention:" or "What an interesting week. This week my attention was on:". Keep it 2-3 sentences, warm and specific, no emojis.
+
+Also classify the week's overall mood as one of exactly: "slow" (quiet news week), "interesting" (a normal-to-lively week), "busy" (a lot happened), or "heavy" (ONLY if a genuinely global CULTURAL icon — a legendary figure like Messi or Pelé, never a politician — passed away this week). Default to "interesting" if unsure. Never mark a week "heavy" for a politician's death or ordinary bad news.
+
 Return a JSON object with this exact shape:
 {
-  "intro": "2-3 sentence warm intro to this week's recap",
-  "signoff": "one reflective closing sentence",
+  "intro": "2-3 sentence first-person intro that opens with the week's mood and 'this week my attention was on…' phrasing",
+  "mood": "slow" | "interesting" | "busy" | "heavy",
+  "signoff": "one short reflective closing sentence (no sign-off name)",
   "stories": [
     {
       "rank": 1,
@@ -172,12 +208,12 @@ Return a JSON object with this exact shape:
       "category": "Finance" | "Business" | "Tech",
       "region": "International" | "United States",
       "source": "publication name or empty",
-      "url": "real url or empty string",
+      "url": "real direct free-article url or empty string",
       "imageUrl": "real image url or empty string"
     }
   ]
 }
-Exactly 10 stories, ranked 1-10.`;
+Exactly 7 stories, ranked 1-7.`;
 
   const raw = await chat(system, user, { json: true, temperature: 0.5 });
   let parsed: RecapData;
@@ -185,10 +221,26 @@ Exactly 10 stories, ranked 1-10.`;
     parsed = JSON.parse(raw) as RecapData;
   } catch {
     parsed = {
-      intro: "Here are the ten stories that shaped the week.",
+      intro:
+        "It was an interesting week — this week my attention was on the stories below.",
+      mood: "interesting",
       stories: [],
     };
   }
-  parsed.stories = (parsed.stories || []).slice(0, 10);
+  if (!parsed.mood) parsed.mood = "interesting";
+
+  // Only real headlines from the live feed carry a URL, and only when that URL
+  // is a direct link to the source's own article page. Anything the model may
+  // have invented (or any aggregator/homepage link) is dropped so a reader
+  // never hits a dead or redirected link. Article photos are discarded too —
+  // images are added afterwards from an open-license set only.
+  const allowedUrls = new Set(news.map((n) => n.url.trim()));
+  const cleaned = (parsed.stories || []).slice(0, 7).map((s) => {
+    const url = (s.url || "").trim();
+    const keepUrl =
+      grounded && allowedUrls.has(url) ? directArticleUrl(url) : "";
+    return { ...s, url: keepUrl, imageUrl: "" };
+  });
+  parsed.stories = withTopicImages(cleaned, 2);
   return { data: parsed, grounded };
 }

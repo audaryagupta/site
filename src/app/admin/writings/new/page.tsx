@@ -15,6 +15,7 @@ const empty: ArticleDraft = {
   featured: false,
   seoTitle: "",
   seoDescription: "",
+  audioUrl: "",
 };
 
 export default function NewArticlePage() {

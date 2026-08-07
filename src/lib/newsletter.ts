@@ -1,9 +1,88 @@
 import { site } from "./site";
-import { escapeHtml } from "./utils";
+import { escapeHtml, absoluteUrl, directArticleUrl } from "./utils";
+import { withTopicImages, isOpenLicensePhoto } from "./topicImages";
 
 function safeUrl(url?: string): string {
   if (!url) return "";
   return /^https?:\/\//i.test(url.trim()) ? url.trim() : "";
+}
+
+// A story links through only when we have a real, direct article URL. We no
+// longer fall back to a Google News search — a missing/unsafe URL just means
+// the headline renders as plain text (never a paywall or a search page).
+function storyLink(url?: string): string {
+  return directArticleUrl(url);
+}
+
+// Each issue picks one heading font deterministically from its subject, so
+// consecutive recaps look a little different without ever being random from
+// send to send. Colour never varies — the palette stays black/white + cream;
+// all the colour in the email comes from the article photographs.
+const HEADING_FONTS = [
+  "Georgia,'Times New Roman',serif",
+  "'Iowan Old Style',Palatino,'Book Antiqua',Georgia,serif",
+  "'Helvetica Neue',Helvetica,Arial,sans-serif",
+  "'Trebuchet MS','Segoe UI',Verdana,sans-serif",
+];
+
+// Stable string hash → used to pick assets deterministically per issue so the
+// same email always renders identically, but different issues differ.
+function seededHash(seedStr: string): number {
+  let h = 0;
+  for (let i = 0; i < seedStr.length; i++)
+    h = (h * 31 + seedStr.charCodeAt(i)) >>> 0;
+  return h;
+}
+function pickFrom<T>(arr: T[], seedStr: string): T {
+  return arr[seededHash(seedStr) % arr.length];
+}
+function pickHeadingFont(seedStr: string): string {
+  return pickFrom(HEADING_FONTS, seedStr);
+}
+
+// A short key that changes every calendar week (IST) so a Friday recap and a
+// mid-week recap in the SAME week — and week-to-week issues — pick different
+// GIFs. Two issues only collide if they share a week AND an identical subject.
+function weekKey(now: Date = new Date()): string {
+  const ist = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  );
+  const start = new Date(ist.getFullYear(), 0, 1);
+  const week = Math.floor(
+    (ist.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000)
+  );
+  return `${ist.getFullYear()}-W${week}`;
+}
+
+// GIF pools. The "mood of the week" meme rotates through the whole pool per
+// issue (this is the one that used to repeat every week); the header banner
+// rotates too. Selection is seeded by subject + week so it varies but is
+// deterministic for a given send.
+// "heavy" assets are reserved for genuinely heavy weeks and kept OUT of the
+// normal rotation so a sombre meme never lands on an ordinary week.
+const HEADER_GIFS = [
+  "/newsletter/recap-slow.gif",
+  "/newsletter/recap-interesting.gif",
+  "/newsletter/recap-busy.gif",
+];
+const FUN_GIFS = [
+  "/newsletter/recap-fun-slow.gif",
+  "/newsletter/recap-fun-interesting.gif",
+  "/newsletter/recap-fun-busy.gif",
+];
+
+// The week's mood drives the header GIF + a short kicker line. Politicians'
+// deaths never make a week "heavy" — only a legendary global cultural icon.
+type Mood = "slow" | "interesting" | "busy" | "heavy";
+const MOODS: Record<Mood, { kicker: string }> = {
+  slow: { kicker: "A slow week." },
+  interesting: { kicker: "An interesting week." },
+  busy: { kicker: "A busy week." },
+  heavy: { kicker: "A heavy week." },
+};
+function moodOf(m?: string): Mood {
+  const k = (m || "").trim().toLowerCase();
+  return k === "slow" || k === "busy" || k === "heavy" ? k : "interesting";
 }
 
 export interface RecapStory {
@@ -17,16 +96,39 @@ export interface RecapStory {
   imageUrl?: string;
 }
 
+export interface FeaturedItem {
+  title: string;
+  blurb?: string;
+  url?: string;
+  imageUrl?: string;
+}
+
 export interface RecapData {
   intro: string;
+  mood?: Mood;
   signoff?: string;
   stories: RecapStory[];
+  // Audarya's own writing to spotlight this week.
+  featured?: FeaturedItem[];
+  // A free-form personal message shown near the top of the email.
+  note?: string;
 }
 
 const BG = "#faf8f3";
 const INK = "#171614";
 const MUTED = "#6b6863";
 const LINE = "#e3ddd0";
+// Warm cream used for chips / soft panels — the only non-white fill, so the
+// email stays black/white + cream and lets the photos carry all the colour.
+const CREAM = "#f1ece1";
+
+// A soft, inline line (not a loud banner) shown on the first few newsletters
+// sent to people Audarya added manually (e.g. merged from her old blog), so
+// they know why they're hearing from her. Reads as part of the note, right
+// under the greeting.
+function addedLine(): string {
+  return `<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:${MUTED};">Audarya added you to this newsletter — if we've crossed paths, through the old blog or otherwise, this is where the writing continues. You can unsubscribe anytime.</p>`;
+}
 
 function shell(inner: string, unsubUrl: string, preview: string) {
   return `<!doctype html><html><head><meta charset="utf-8"/>
@@ -52,44 +154,146 @@ export function renderRecapEmail(opts: {
   subject: string;
   data: RecapData;
   unsubUrl: string;
+  addedNote?: boolean;
 }) {
-  const { firstName, subject, data, unsubUrl } = opts;
-  const greeting = firstName ? `Hi ${escapeHtml(firstName)},` : "Hi there,";
+  const { firstName, subject, data, unsubUrl, addedNote } = opts;
+  const greeting = firstName ? `Hey ${escapeHtml(firstName)},` : "Hey there,";
+  const headingFont = pickHeadingFont(subject);
+  const mood = moodOf(data.mood);
+  // Rotate the GIFs per issue (seeded by subject + week) so consecutive recaps
+  // — and two issues in the same week — never reuse the same meme. A "heavy"
+  // week still keeps its sombre banner/meme; other weeks rotate freely.
+  const gifSeed = `${subject}|${weekKey()}`;
+  const headerGif = absoluteUrl(
+    mood === "heavy" ? "/newsletter/recap-heavy.gif" : pickFrom(HEADER_GIFS, gifSeed)
+  );
+  // A playful, colourful "mood of the week" GIF shown after the intro.
+  const funGif = absoluteUrl(
+    mood === "heavy"
+      ? "/newsletter/recap-fun-heavy.gif"
+      : pickFrom(FUN_GIFS, `fun|${gifSeed}`)
+  );
+  const dividerGif = absoluteUrl(`/newsletter/divider.gif`);
 
-  const stories = data.stories
-    .slice(0, 10)
+  // Tiny caption crediting a photo source in small text.
+  const photoCredit = (source?: string) =>
+    source
+      ? `<p style="margin:-8px 0 14px;font-family:Arial,sans-serif;font-size:10px;line-height:1.4;color:${MUTED};">Photo: ${escapeHtml(
+          source
+        )}</p>`
+      : "";
+
+  const stories = withTopicImages(data.stories.slice(0, 7))
     .map((s) => {
-      const url = safeUrl(s.url);
-      const imageUrl = safeUrl(s.imageUrl);
-      const img = imageUrl
-        ? `<a href="${url || "#"}" style="text-decoration:none;"><img src="${imageUrl}" width="536" alt="" style="width:100%;border-radius:4px;border:1px solid ${LINE};margin-bottom:12px;"/></a>`
+      const link = storyLink(s.url);
+      // Only ever show a curated open-license photograph — never a logo, seal,
+      // flag, plain graphic, or a stale non-photo URL from an older recap.
+      const imageUrl = isOpenLicensePhoto(s.imageUrl) ? s.imageUrl!.trim() : "";
+      // The photo is the only colour on the card. When we have a direct URL,
+      // the photo and headline click straight through; otherwise they stay
+      // plain (no "read more", no search fallback).
+      const headline = `<h2 style="margin:9px 0 8px;font-family:${headingFont};font-size:21px;line-height:1.25;">${escapeHtml(
+        s.title
+      )}</h2>`;
+      // Kept as a small, fixed-size thumbnail so photos never dominate the
+      // layout: 200px wide, capped height, centred.
+      const imgTag = `<img src="${imageUrl}" width="200" alt="" style="display:block;width:200px;max-width:60%;height:auto;max-height:150px;border-radius:8px;border:1px solid ${LINE};margin:0 auto 8px;"/>`;
+      const media = imageUrl
+        ? (link
+            ? `<a href="${link}" style="text-decoration:none;">${imgTag}</a>`
+            : imgTag) +
+          `\n${photoCredit(s.source)}`
         : "";
-      return `<tr><td style="padding:0 32px 26px;">
-${img}
-<p style="margin:0 0 6px;font-family:Arial,sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:${MUTED};">${s.rank}. ${escapeHtml(s.category)} · ${escapeHtml(s.region)}</p>
-<a href="${url || "#"}" style="color:${INK};text-decoration:none;"><h2 style="margin:0 0 8px;font-size:20px;line-height:1.25;">${escapeHtml(s.title)}</h2></a>
-<p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:${INK};">${escapeHtml(s.summary)}</p>
-${url ? `<a href="${url}" style="font-family:Arial,sans-serif;font-size:13px;color:${INK};">Read more${s.source ? ` · ${escapeHtml(s.source)}` : ""} →</a>` : ""}
+      return `<tr><td style="padding:0 32px 30px;">
+${media}
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr>
+<td valign="top" width="42" style="padding-right:12px;">
+<div style="width:30px;height:30px;border-radius:50%;background:${INK};color:#ffffff;text-align:center;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;line-height:30px;">${s.rank}</div>
+</td>
+<td valign="top">
+<span style="display:inline-block;background:${CREAM};color:${INK};font-family:Arial,sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:3px 10px;border-radius:999px;">${escapeHtml(s.category)} · ${escapeHtml(s.region)}</span>
+${link ? `<a href="${link}" style="color:${INK};text-decoration:none;">${headline}</a>` : headline}
+<p style="margin:0;font-size:15px;line-height:1.6;color:${INK};">${escapeHtml(s.summary)}</p>
+${
+  !imageUrl && s.source
+    ? `<p style="margin:8px 0 0;font-family:Arial,sans-serif;font-size:10px;color:${MUTED};">Source: ${escapeHtml(
+        s.source
+      )}</p>`
+    : ""
+}
+</td></tr></table>
 </td></tr>`;
     })
     .join("\n");
 
-  const inner = `
-<tr><td style="padding:32px 32px 8px;">
-<p style="margin:0;font-family:Arial,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${MUTED};">The Friday Recap</p>
-<h1 style="margin:8px 0 0;font-size:30px;line-height:1.15;">${escapeHtml(subject)}</h1>
-</td></tr>
-<tr><td style="padding:16px 32px 24px;">
-<p style="margin:0 0 12px;font-size:16px;line-height:1.6;">${greeting}</p>
-<p style="margin:0;font-size:16px;line-height:1.6;color:${INK};">${escapeHtml(data.intro)}</p>
-</td></tr>
-<tr><td style="padding:0 32px 8px;"><hr style="border:0;border-top:1px solid ${LINE};"/></td></tr>
-${stories}
+  const note = (data.note || "").trim()
+    ? `<tr><td style="padding:0 32px 22px;">
+<div style="background:${CREAM};border-left:4px solid ${INK};border-radius:6px;padding:16px 18px;">
+<p style="margin:0;font-size:15px;line-height:1.65;color:${INK};white-space:pre-wrap;">${escapeHtml(
+        data.note!.trim()
+      )}</p>
+</div></td></tr>`
+    : "";
+
+  const featured =
+    data.featured && data.featured.length
+      ? `<tr><td style="padding:8px 32px 4px;">
+<p style="margin:0 0 12px;font-family:${headingFont};font-size:13px;letter-spacing:2px;text-transform:uppercase;color:${INK};">Fresh from ${escapeHtml(
+          site.name
+        )}</p>
+${data.featured
+  .map((f) => {
+    const url = safeUrl(f.url) || site.url;
+    const imageUrl = safeUrl(f.imageUrl);
+    const img = imageUrl
+      ? `<a href="${url}"><img src="${imageUrl}" width="200" alt="" style="display:block;width:200px;max-width:60%;height:auto;max-height:150px;border-radius:8px;border:1px solid ${LINE};margin:0 0 10px;"/></a>`
+      : "";
+    return `<div style="margin-bottom:18px;">
+${img}
+<a href="${url}" style="color:${INK};text-decoration:none;"><h2 style="margin:0 0 6px;font-family:${headingFont};font-size:19px;line-height:1.3;">${escapeHtml(
+      f.title
+    )}</h2></a>
 ${
-  data.signoff
-    ? `<tr><td style="padding:8px 32px 28px;"><hr style="border:0;border-top:1px solid ${LINE};margin-bottom:20px;"/><p style="margin:0;font-size:16px;line-height:1.6;font-style:italic;color:${MUTED};">${escapeHtml(data.signoff)}</p><p style="margin:12px 0 0;font-size:16px;">— Audarya</p></td></tr>`
+  f.blurb
+    ? `<p style="margin:0;font-size:15px;line-height:1.6;color:${INK};">${escapeHtml(
+        f.blurb
+      )}</p>`
     : ""
-}`;
+}
+</div>`;
+  })
+  .join("\n")}
+</td></tr>`
+      : "";
+
+  const inner = `
+<tr><td style="padding:0;"><img src="${headerGif}" width="600" alt="" style="display:block;width:100%;"/></td></tr>
+<tr><td style="padding:24px 32px 4px;text-align:center;">
+<p style="margin:0;font-family:Arial,sans-serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:${MUTED};">${MOODS[mood].kicker}&nbsp;&nbsp;The Weekly Recap</p>
+<h1 style="margin:10px 0 0;font-family:${headingFont};font-size:32px;line-height:1.12;color:${INK};">${escapeHtml(subject)}</h1>
+</td></tr>
+<tr><td style="padding:18px 32px 10px;">
+<p style="margin:0 0 12px;font-size:16px;line-height:1.6;">${greeting}</p>
+${addedNote ? addedLine() : ""}
+<p style="margin:0;font-size:17px;line-height:1.7;color:${INK};">${escapeHtml(data.intro)}</p>
+</td></tr>
+<tr><td style="padding:2px 32px 14px;text-align:center;">
+<img src="${funGif}" width="240" alt="" style="display:inline-block;width:240px;max-width:70%;border-radius:8px;"/>
+</td></tr>
+${note}
+${featured}
+<tr><td style="padding:6px 32px 14px;">
+<img src="${dividerGif}" width="536" alt="" style="display:block;width:100%;margin-bottom:16px;"/>
+<p style="margin:0;font-family:${headingFont};font-size:14px;letter-spacing:2px;text-transform:uppercase;color:${INK};">The stories that mattered</p>
+</td></tr>
+${stories}
+<tr><td style="padding:2px 32px 30px;"><img src="${dividerGif}" width="536" alt="" style="display:block;width:100%;margin-bottom:18px;"/>${
+    data.signoff
+      ? `<p style="margin:0 0 10px;font-size:16px;line-height:1.6;font-style:italic;color:${MUTED};">${escapeHtml(
+          data.signoff
+        )}</p>`
+      : ""
+  }<p style="margin:0;font-family:${headingFont};font-size:18px;color:${INK};">Loved compiling this for you!! — Audi</p></td></tr>`;
 
   return shell(inner, unsubUrl, data.intro.slice(0, 140));
 }
@@ -100,8 +304,10 @@ export function renderGenericEmail(opts: {
   bodyHtml: string;
   unsubUrl: string;
   previewText?: string;
+  addedNote?: boolean;
 }) {
-  const { firstName, subject, bodyHtml, unsubUrl, previewText } = opts;
+  const { firstName, subject, bodyHtml, unsubUrl, previewText, addedNote } =
+    opts;
   const greeting = firstName ? `<p style="margin:0 0 16px;font-size:16px;">Hi ${escapeHtml(firstName)},</p>` : "";
   const inner = `
 <tr><td style="padding:32px 32px 8px;">
@@ -109,6 +315,7 @@ export function renderGenericEmail(opts: {
 </td></tr>
 <tr><td style="padding:16px 32px 28px;font-size:16px;line-height:1.7;color:${INK};">
 ${greeting}
+${addedNote ? addedLine() : ""}
 ${bodyHtml}
 </td></tr>`;
   return shell(inner, unsubUrl, previewText || subject);

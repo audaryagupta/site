@@ -31,6 +31,16 @@ export default async function EditArticlePage({
     featured: article.featured,
     seoTitle: article.seoTitle || "",
     seoDescription: article.seoDescription || "",
+    audioUrl: article.audioUrl || "",
+    publishedAt: article.publishedAt
+      ? new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Asia/Kolkata",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(article.publishedAt)
+      : null,
+    notifiedAt: article.notifiedAt ? article.notifiedAt.toISOString() : null,
   };
 
   return (

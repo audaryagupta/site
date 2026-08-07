@@ -1,12 +1,22 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { Container } from "@/components/Container";
-import { getReadingItems, getSetting } from "@/lib/queries";
+import { getReadingItems, getSetting, getLatestRecap } from "@/lib/queries";
+import { formatDate, directArticleUrl } from "@/lib/utils";
+import { isOpenLicensePhoto } from "@/lib/topicImages";
 
 export const revalidate = 60;
+
+// Only link a headline when we have a real, direct article URL — no Google
+// News / aggregator / search fallback.
+function recapLink(url?: string): string {
+  return directArticleUrl(url);
+}
 
 export const metadata: Metadata = {
   title: "Now",
   description: "What Audarya is reading, watching and thinking about right now.",
+  alternates: { canonical: "/reading" },
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -16,12 +26,13 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export default async function NowPage() {
-  const [items, intro] = await Promise.all([
+  const [items, intro, recap] = await Promise.all([
     getReadingItems(),
     getSetting(
       "now_intro",
       "A living page — a snapshot of what has my attention at the moment. Inspired by the /now movement."
     ),
+    getLatestRecap(),
   ]);
 
   const grouped = items.reduce<Record<string, typeof items>>((acc, item) => {
@@ -40,7 +51,11 @@ export default async function NowPage() {
       <p className="mt-5 font-serif text-lg text-muted">{intro}</p>
 
       {items.length === 0 ? (
-        <p className="mt-10 text-muted">This page is being curated. Check back soon.</p>
+        !recap && (
+          <p className="mt-10 text-muted">
+            This page is being curated. Check back soon.
+          </p>
+        )
       ) : (
         <div className="mt-12 space-y-12">
           {order
@@ -83,6 +98,81 @@ export default async function NowPage() {
               </section>
             ))}
         </div>
+      )}
+
+      {recap && (
+        <section className="mt-16 border-t border-line pt-12">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.25em] text-muted">
+                From the last Weekly Recap
+              </p>
+              <h2 className="mt-2 font-display text-3xl font-semibold">
+                In the news
+              </h2>
+            </div>
+            {recap.sentAt && (
+              <span className="text-xs text-muted">
+                Sent {formatDate(recap.sentAt)}
+              </span>
+            )}
+          </div>
+
+          <ul className="mt-8 space-y-6">
+            {recap.stories.map((s) => (
+              <li
+                key={s.rank}
+                className="flex gap-4 border-b border-line pb-6 last:border-0"
+              >
+                <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-semibold text-background">
+                  {s.rank}
+                </span>
+                <div className="min-w-0">
+                  {isOpenLicensePhoto(s.imageUrl) && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={s.imageUrl}
+                      alt=""
+                      className="mb-3 h-28 w-full max-w-[200px] rounded-lg border border-line object-cover"
+                    />
+                  )}
+                  <p className="text-[11px] font-medium uppercase tracking-widest text-muted">
+                    {s.category} · {s.region}
+                  </p>
+                  {recapLink(s.url) ? (
+                    <a
+                      href={recapLink(s.url)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 block font-display text-xl font-semibold leading-snug hover:opacity-80"
+                    >
+                      {s.title}
+                    </a>
+                  ) : (
+                    <p className="mt-1 block font-display text-xl font-semibold leading-snug">
+                      {s.title}
+                    </p>
+                  )}
+                  <p className="mt-1.5 font-serif leading-relaxed text-muted">
+                    {s.summary}
+                  </p>
+                  {s.source && (
+                    <p className="mt-2 text-[11px] text-muted">
+                      Source: {s.source}
+                    </p>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <Link
+            href="/newsletter"
+            className="link-underline mt-8 inline-block text-sm text-muted hover:text-foreground"
+          >
+            Get this in your inbox every week — subscribe to The Weekly Recap →
+          </Link>
+        </section>
       )}
     </Container>
   );

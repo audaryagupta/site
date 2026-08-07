@@ -23,7 +23,12 @@ model Article {
   seoTitle        String?
   seoDescription  String?
   readingMinutes  Int       @default(1)
-  views           Int       @default(0)
+  audioUrl        String?                  // optional narration read by Audarya
+  views           Int       @default(0)   // real, tracked views
+  likes           Int       @default(0)   // real, tracked likes
+  viewsBoost      Int       @default(0)   // added to the PUBLIC view count only
+  likesBoost      Int       @default(0)   // added to the PUBLIC like count only
+  notifiedAt      DateTime?                 // when subscribers were emailed about this article
   publishedAt     DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -37,6 +42,21 @@ model Tag {
   articles Article[] @relation("ArticleTags")
 }
 
+// Reader comments on articles. Requires Google sign-in (authorEmail captured
+// from the session); posts appear immediately. Admin can delete.
+model Comment {
+  id          String   @id @default(cuid())
+  articleSlug String
+  authorName  String
+  authorEmail String
+  authorImage String   @default("")
+  body        String
+  hidden      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([articleSlug])
+}
+
 model Subscriber {
   id          String   @id @default(cuid())
   email       String   @unique
@@ -44,18 +64,24 @@ model Subscriber {
   status      String   @default("active") // active | unsubscribed
   unsubToken  String   @unique @default(cuid())
   source      String   @default("website")
+  // Owner-added subscribers (e.g. merged from the old blog) can be told they
+  // were added; welcomeRemaining counts how many upcoming newsletters carry
+  // that note (starts at 4, decrements per send).
+  addedByOwner    Boolean @default(false)
+  welcomeRemaining Int    @default(0)
   createdAt   DateTime @default(now())
 }
 
 // Private, admin-uploaded contacts for birthday / promotional emails
 model Contact {
-  id        String   @id @default(cuid())
-  email     String
-  firstName String   @default("")
-  lastName  String   @default("")
-  birthday  DateTime?
-  notes     String   @default("")
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  email       String
+  firstName   String   @default("")
+  lastName    String   @default("")
+  birthday    DateTime?
+  anniversary DateTime?
+  notes       String   @default("")
+  createdAt   DateTime @default(now())
 
   @@unique([email])
 }
@@ -92,15 +118,54 @@ model Appointment {
   email          String
   phone          String   @default("")
   purpose        String   @default("")
-  mode           String   @default("meet") // meet | zoom | physical
+  title          String   @default("") // optional meeting name, shown on the calendar & emails
+  isGroup        Boolean  @default(false) // group meeting vs 1:1
+  guests         String   @default("") // comma-separated extra attendee emails (group meetings)
+  mode           String   @default("meet") // meet | physical
   requestedStart DateTime
   requestedEnd   DateTime
+  timezone       String   @default("Asia/Kolkata") // requester's chosen tz (for display)
   status         String   @default("pending") // pending | accepted | rejected | cancelled
   meetingLink    String?
   location       String?
   calendarEventId String?
+  cancelToken    String   @unique @default(cuid())
   adminNotes     String   @default("")
   createdAt      DateTime @default(now())
+}
+
+// Hidden easter egg: visitors can request a personalized birthday / anniversary
+// greeting from Audarya. Delivered manually from the admin dashboard.
+model GreetingRequest {
+  id         String   @id @default(cuid())
+  requesterName  String
+  requesterEmail String
+  occasion   String   @default("birthday") // birthday | anniversary
+  forName    String   @default("")
+  onDate     DateTime?
+  message    String   @default("")
+  status     String   @default("pending") // pending | sent | dismissed
+  createdAt  DateTime @default(now())
+}
+
+// Availability windows the admin publishes for the public booker. `kind`
+// distinguishes online vs in-person; `city` is shown for in-person windows so
+// visitors know where Audarya currently is. Times are IST-naive labels.
+model Availability {
+  id        String   @id @default(cuid())
+  status    String   @default("available") // available | unavailable (blocked)
+  kind      String   @default("online") // online | offline
+  city      String   @default("")       // shown for offline windows
+  dayOfWeek Int       @default(1)         // 0=Sun … 6=Sat (used when this is a weekly default)
+  startDate String   @default("")        // "" = recurring weekly default; else YYYY-MM-DD special range start
+  endDate   String   @default("")        // YYYY-MM-DD special range end (inclusive); applies to every date in range
+  startTime String   @default("10:00")
+  endTime   String   @default("18:00")
+  timezone  String   @default("Asia/Kolkata")
+  note      String   @default("")
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
 }
 
 model ReadingItem {
@@ -118,4 +183,149 @@ model ReadingItem {
 model Setting {
   key   String @id
   value String @default("")
+}
+
+// Quotes for the hidden "Who said it?" game. `mine` marks Audarya's own lines;
+// the rest are famous quotes. Rounds are built from these (1 of hers + 2 others).
+model Quote {
+  id        String   @id @default(cuid())
+  text      String
+  author    String   @default("")   // shown for famous quotes; blank for hers
+  mine      Boolean  @default(false)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+// Dashboard access. The owner (ADMIN_EMAIL) is always allowed; additional
+// members (e.g. secretaries) are invited by email and can be revoked.
+model TeamMember {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String   @default("")
+  role      String   @default("member") // owner | member
+  status    String   @default("active") // active | revoked
+  invitedBy String   @default("")
+  createdAt DateTime @default(now())
+}
+
+// Addresses blocked from all mailings; they also can't rejoin the list.
+model EmailBlacklist {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  reason    String   @default("")
+  createdAt DateTime @default(now())
+}
+
+// A unique website visitor, identified by a first-party id stored in the
+// browser. Used for new-vs-repeat and unique-visitor analytics.
+model Visitor {
+  id           String   @id // client-generated id (stored in localStorage)
+  firstSeen    DateTime @default(now())
+  lastSeen     DateTime @default(now())
+  sessionCount Int      @default(1)
+  pageviews    PageView[]
+
+  @@index([firstSeen])
+}
+
+// A single page view on the public site. Sessions are grouped by sessionId so
+// we can derive session counts and average session duration. `source` buckets
+// traffic (organic search / direct / social / referral / internal).
+model PageView {
+  id           String   @id @default(cuid())
+  visitorId    String
+  sessionId    String
+  path         String   @default("/")
+  referrerHost String   @default("")
+  source       String   @default("direct") // organic | direct | social | referral | internal
+  device       String   @default("desktop") // mobile | tablet | desktop
+  isNewVisitor Boolean  @default(false)
+  // Coarse geolocation derived from IP (we never store the IP itself).
+  country      String   @default("")
+  countryCode  String   @default("")
+  region       String   @default("")
+  city         String   @default("")
+  createdAt    DateTime @default(now())
+
+  visitor      Visitor  @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([sessionId])
+  @@index([visitorId])
+}
+
+// A public "link hub" (linktree-style) entry shown on the standalone /links
+// page. `icon` is a known key (see LINK_ICONS) or an uploaded image URL.
+model LinkItem {
+  id        String   @id @default(cuid())
+  label     String
+  url       String
+  icon      String   @default("link")   // known icon key OR uploaded image url
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([order])
+}
+
+// Personal goals shown only in the Studio dashboard. `horizon` separates
+// short-term from long-term; toggled done/undone by the owner.
+model Goal {
+  id          String   @id @default(cuid())
+  title       String
+  detail      String   @default("")
+  horizon     String   @default("short") // short | long
+  done        Boolean  @default(false)
+  order       Int      @default(0)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([horizon])
+}
+
+// Private "My Bookshelf" — books logged as Audarya reads them.
+model Book {
+  id        String   @id @default(cuid())
+  title     String
+  author    String   @default("")
+  status    String   @default("reading") // want | reading | finished
+  rating    Int      @default(0)         // 0–5, optional
+  notes     String   @default("")
+  coverUrl  String?
+  startedAt DateTime?
+  finishedAt DateTime?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([status])
+}
+
+// An email composed in Studio and queued to send at a future time. Sent by the
+// /api/cron/send-scheduled job once sendAt has passed.
+model ScheduledEmail {
+  id         String   @id @default(cuid())
+  subject    String
+  html       String
+  recipients String                      // JSON array of email addresses
+  account    String   @default("personal") // mass | personal
+  sendAt     DateTime
+  status     String   @default("scheduled") // scheduled | sent | failed | canceled
+  sentCount  Int      @default(0)
+  error      String   @default("")
+  createdAt  DateTime @default(now())
+  sentAt     DateTime?
+
+  @@index([status, sendAt])
+}
+
+// System log of major actions (article published, contact added, appointment
+// accepted, newsletter sent…). Not UI clicks. Exported monthly to Google Drive.
+model ActivityLog {
+  id        String   @id @default(cuid())
+  action    String                    // e.g. "article.published"
+  detail    String   @default("")     // human-readable summary
+  actor     String   @default("")     // admin email when known
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }

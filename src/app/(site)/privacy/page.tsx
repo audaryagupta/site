@@ -1,38 +1,27 @@
 import type { Metadata } from "next";
 import { Container } from "@/components/Container";
-import { site } from "@/lib/site";
+import { LegalBody } from "@/components/LegalBody";
+import { getSiteContent, pickStr } from "@/lib/siteContent";
+import { PRIVACY_BODY_DEFAULT } from "@/lib/siteText";
+
+export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "Privacy",
-  description: "How byAudarya handles your data.",
+  title: "Privacy Policy",
+  description: "How byAudarya handles personal information.",
 };
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const content = await getSiteContent();
   return (
     <Container className="max-w-prose py-16">
-      <h1 className="font-display text-4xl font-semibold tracking-tight">
-        Privacy
+      <p className="text-xs uppercase tracking-[0.25em] text-muted">
+        {pickStr(content, "legal.eyebrow", "Website policy")}
+      </p>
+      <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight">
+        {pickStr(content, "legal.privacy.title", "Privacy Policy")}
       </h1>
-      <div className="prose-editorial mt-8">
-        <p>
-          byAudarya collects only what you choose to share: your name and email
-          when you subscribe to the newsletter or send a message, and any
-          details you provide when booking an appointment.
-        </p>
-        <p>
-          Your email is used solely to send you the content you signed up for.
-          Every newsletter includes a one-click unsubscribe link, and your data
-          is never sold or shared with third parties.
-        </p>
-        <p>
-          Appointment details are used only to schedule and confirm your
-          meeting via Google Calendar.
-        </p>
-        <p>
-          Questions? Write to{" "}
-          <a href={`mailto:${site.email}`}>{site.email}</a>.
-        </p>
-      </div>
+      <LegalBody text={pickStr(content, "legal.privacy.body", PRIVACY_BODY_DEFAULT)} />
     </Container>
   );
 }

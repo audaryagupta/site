@@ -3,6 +3,7 @@
 import { signIn } from "next-auth/react";
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { LogoMark } from "@/components/Logo";
 
 function LoginInner() {
   const params = useSearchParams();
@@ -10,10 +11,7 @@ function LoginInner() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-6">
       <div className="w-full max-w-sm text-center">
-        <p className="font-display text-3xl">
-          <span className="italic">by</span>{" "}
-          <span className="tracking-[0.18em]">AUDARYA</span>
-        </p>
+        <LogoMark className="justify-center" imgClassName="h-10" />
         <h1 className="mt-8 font-display text-2xl font-semibold">
           Studio sign-in
         </h1>
