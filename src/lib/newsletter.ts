@@ -1,6 +1,6 @@
 import { site } from "./site";
 import { escapeHtml, absoluteUrl, directArticleUrl } from "./utils";
-import { withTopicImages } from "./topicImages";
+import { withTopicImages, isOpenLicensePhoto } from "./topicImages";
 
 function safeUrl(url?: string): string {
   if (!url) return "";
@@ -135,7 +135,9 @@ export function renderRecapEmail(opts: {
   const stories = withTopicImages(data.stories.slice(0, 7))
     .map((s) => {
       const link = storyLink(s.url);
-      const imageUrl = safeUrl(s.imageUrl);
+      // Only ever show a curated open-license photograph — never a logo, seal,
+      // flag, plain graphic, or a stale non-photo URL from an older recap.
+      const imageUrl = isOpenLicensePhoto(s.imageUrl) ? s.imageUrl!.trim() : "";
       // The photo is the only colour on the card. When we have a direct URL,
       // the photo and headline click straight through; otherwise they stay
       // plain (no "read more", no search fallback).

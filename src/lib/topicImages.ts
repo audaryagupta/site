@@ -69,6 +69,32 @@ const TOPIC_IMAGES: { keys: string[]; file: string }[] = [
   },
 ];
 
+// The only image files we ever display — genuine open-license photographs.
+const ALLOWED_FILES = new Set(TOPIC_IMAGES.map((t) => t.file));
+
+/**
+ * True only for an image we KNOW is an open-license photograph — i.e. a
+ * Wikimedia Commons file from our curated set, and never a vector/SVG (logos,
+ * flags, seals, marks). Used to gate rendering so a stale/stored recap can
+ * never surface a logo or plain graphic.
+ */
+export function isOpenLicensePhoto(url?: string): boolean {
+  const u = (url || "").trim();
+  if (!/^https?:\/\//i.test(u)) return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(u);
+  } catch {
+    return false;
+  }
+  if (!/(^|\.)commons\.wikimedia\.org$/i.test(parsed.hostname)) return false;
+  const m = parsed.pathname.match(/Special:FilePath\/(.+)$/i);
+  if (!m) return false;
+  const file = decodeURIComponent(m[1]);
+  if (/\.svg$/i.test(file)) return false;
+  return ALLOWED_FILES.has(file);
+}
+
 /** Best open-license photo for a headline, or null if nothing obvious matches. */
 export function topicImageFor(title: string): TopicImage | null {
   const hay = ` ${title.toLowerCase()} `;

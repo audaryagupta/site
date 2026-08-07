@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Container } from "@/components/Container";
 import { getReadingItems, getSetting, getLatestRecap } from "@/lib/queries";
 import { formatDate, directArticleUrl } from "@/lib/utils";
+import { isOpenLicensePhoto } from "@/lib/topicImages";
 
 export const revalidate = 60;
 
@@ -127,7 +128,7 @@ export default async function NowPage() {
                   {s.rank}
                 </span>
                 <div className="min-w-0">
-                  {s.imageUrl && /^https?:\/\//i.test(s.imageUrl) && (
+                  {isOpenLicensePhoto(s.imageUrl) && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={s.imageUrl}
