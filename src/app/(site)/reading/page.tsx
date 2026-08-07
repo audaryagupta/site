@@ -2,15 +2,14 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Container } from "@/components/Container";
 import { getReadingItems, getSetting, getLatestRecap } from "@/lib/queries";
-import { formatDate } from "@/lib/utils";
+import { formatDate, directArticleUrl } from "@/lib/utils";
 
 export const revalidate = 60;
 
 // Only link a headline when we have a real, direct article URL — no Google
-// News search fallback.
+// News / aggregator / search fallback.
 function recapLink(url?: string): string {
-  const u = (url || "").trim();
-  return /^https?:\/\//i.test(u) ? u : "";
+  return directArticleUrl(url);
 }
 
 export const metadata: Metadata = {
@@ -133,8 +132,7 @@ export default async function NowPage() {
                     <img
                       src={s.imageUrl}
                       alt=""
-                      className="mb-3 w-full rounded-lg border border-line object-cover"
-                      style={{ maxHeight: 240 }}
+                      className="mb-3 h-28 w-full max-w-[200px] rounded-lg border border-line object-cover"
                     />
                   )}
                   <p className="text-[11px] font-medium uppercase tracking-widest text-muted">

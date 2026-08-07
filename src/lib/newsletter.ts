@@ -1,5 +1,5 @@
 import { site } from "./site";
-import { escapeHtml, absoluteUrl } from "./utils";
+import { escapeHtml, absoluteUrl, directArticleUrl } from "./utils";
 import { withTopicImages } from "./topicImages";
 
 function safeUrl(url?: string): string {
@@ -11,7 +11,7 @@ function safeUrl(url?: string): string {
 // longer fall back to a Google News search — a missing/unsafe URL just means
 // the headline renders as plain text (never a paywall or a search page).
 function storyLink(url?: string): string {
-  return safeUrl(url);
+  return directArticleUrl(url);
 }
 
 // Each issue picks one heading font deterministically from its subject, so
@@ -142,10 +142,13 @@ export function renderRecapEmail(opts: {
       const headline = `<h2 style="margin:9px 0 8px;font-family:${headingFont};font-size:21px;line-height:1.25;">${escapeHtml(
         s.title
       )}</h2>`;
+      // Kept as a small, fixed-size thumbnail so photos never dominate the
+      // layout: 200px wide, capped height, centred.
+      const imgTag = `<img src="${imageUrl}" width="200" alt="" style="display:block;width:200px;max-width:60%;height:auto;max-height:150px;border-radius:8px;border:1px solid ${LINE};margin:0 auto 8px;"/>`;
       const media = imageUrl
         ? (link
-            ? `<a href="${link}" style="text-decoration:none;"><img src="${imageUrl}" width="536" alt="" style="display:block;width:100%;border-radius:8px;border:1px solid ${LINE};margin-bottom:14px;"/></a>`
-            : `<img src="${imageUrl}" width="536" alt="" style="display:block;width:100%;border-radius:8px;border:1px solid ${LINE};margin-bottom:14px;"/>`) +
+            ? `<a href="${link}" style="text-decoration:none;">${imgTag}</a>`
+            : imgTag) +
           `\n${photoCredit(s.source)}`
         : "";
       return `<tr><td style="padding:0 32px 30px;">
@@ -190,7 +193,7 @@ ${data.featured
     const url = safeUrl(f.url) || site.url;
     const imageUrl = safeUrl(f.imageUrl);
     const img = imageUrl
-      ? `<a href="${url}"><img src="${imageUrl}" width="536" alt="" style="display:block;width:100%;border-radius:8px;border:1px solid ${LINE};margin-bottom:10px;"/></a>`
+      ? `<a href="${url}"><img src="${imageUrl}" width="200" alt="" style="display:block;width:200px;max-width:60%;height:auto;max-height:150px;border-radius:8px;border:1px solid ${LINE};margin:0 0 10px;"/></a>`
       : "";
     return `<div style="margin-bottom:18px;">
 ${img}

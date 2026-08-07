@@ -93,3 +93,36 @@ export function absoluteUrl(path: string): string {
   const base = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
   return `${base}${path.startsWith("/") ? path : `/${path}`}`;
 }
+
+/**
+ * True only for a real, direct link to a source's own article page. Rejects
+ * news aggregators (e.g. Google News), search-result pages and bare homepages
+ * so readers always land on the actual source rather than a redirect or a
+ * dead search. Returns the trimmed URL when valid, otherwise "".
+ */
+export function directArticleUrl(u?: string): string {
+  const raw = (u || "").trim();
+  if (!/^https?:\/\//i.test(raw)) return "";
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return "";
+  }
+  const host = parsed.hostname.toLowerCase();
+  const bannedHosts = [
+    "news.google.com",
+    "google.com",
+    "google.co.uk",
+    "bing.com",
+    "duckduckgo.com",
+    "news.yahoo.com",
+    "t.co",
+    "lnkd.in",
+  ];
+  if (bannedHosts.some((h) => host === h || host.endsWith(`.${h}`))) return "";
+  const path = parsed.pathname.toLowerCase();
+  if (path.includes("/search") || parsed.search.includes("q=")) return "";
+  const slug = path.replace(/\/+$/, "");
+  return slug === "" || slug === "/" ? "" : raw;
+}
