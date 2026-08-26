@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 import { Trash2, ExternalLink, GripVertical, Plus } from "lucide-react";
 import { LINK_ICON_KEYS, LinkIcon } from "@/lib/linkIcons";
 import { UploadButton } from "@/components/admin/UploadButton";
+import {
+  LINK_TARGET_TYPES,
+  buildLinkUrl,
+  displayLinkUrl,
+  type LinkTargetType,
+} from "@/lib/linkTarget";
 
 interface LinkItem {
   id: string;
@@ -19,8 +25,30 @@ const input =
 
 export default function LinksAdminPage() {
   const [links, setLinks] = useState<LinkItem[]>([]);
-  const [form, setForm] = useState({ label: "", url: "", icon: "link" });
+  const [form, setForm] = useState({
+    label: "",
+    url: "",
+    icon: "link",
+    type: "website" as LinkTargetType,
+  });
   const [saving, setSaving] = useState(false);
+
+  const targetType =
+    LINK_TARGET_TYPES.find((t) => t.value === form.type) ||
+    LINK_TARGET_TYPES[0];
+
+  // Switching type suggests the matching icon, unless a custom/other icon was
+  // already picked deliberately.
+  function changeType(next: LinkTargetType) {
+    const suggested =
+      LINK_TARGET_TYPES.find((t) => t.value === next)?.icon || "link";
+    const stillDefault = LINK_TARGET_TYPES.some((t) => t.icon === form.icon);
+    setForm((f) => ({
+      ...f,
+      type: next,
+      icon: stillDefault ? suggested : f.icon,
+    }));
+  }
 
   async function load() {
     const res = await fetch("/api/admin/links");
@@ -38,9 +66,13 @@ export default function LinksAdminPage() {
       await fetch("/api/admin/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          label: form.label,
+          icon: form.icon,
+          url: buildLinkUrl(form.type, form.url),
+        }),
       });
-      setForm({ label: "", url: "", icon: "link" });
+      setForm({ label: "", url: "", icon: "link", type: "website" });
       await load();
     } finally {
       setSaving(false);
@@ -100,17 +132,44 @@ export default function LinksAdminPage() {
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <input
             className={input}
-            placeholder="Label (e.g. My Instagram)"
+            placeholder="Label (e.g. My Instagram, Call me)"
             value={form.label}
             onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
           />
-          <input
+          <select
             className={input}
-            placeholder="URL (https://…) or mailto:/tel:"
+            value={form.type}
+            onChange={(e) => changeType(e.target.value as LinkTargetType)}
+          >
+            {LINK_TARGET_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+          <input
+            className={`${input} sm:col-span-2`}
+            type={
+              form.type === "phone" || form.type === "whatsapp"
+                ? "tel"
+                : form.type === "email"
+                  ? "email"
+                  : "text"
+            }
+            placeholder={targetType.placeholder}
             value={form.url}
             onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
           />
         </div>
+        <p className="mt-2 text-xs text-muted">
+          {form.type === "phone"
+            ? "Visitors tap to call. Include the country code (e.g. +91)."
+            : form.type === "whatsapp"
+              ? "Opens a WhatsApp chat with you. Include the country code (e.g. +91)."
+              : form.type === "email"
+                ? "Visitors tap to open a new email to you."
+                : "Any web address — https:// is added automatically if you leave it out."}
+        </p>
 
         <div className="mt-4">
           <p className="mb-2 text-xs uppercase tracking-widest text-muted">
@@ -193,7 +252,8 @@ export default function LinksAdminPage() {
               />
               <input
                 className="w-full truncate bg-transparent text-xs text-muted outline-none"
-                value={l.url}
+                title={l.url}
+                value={displayLinkUrl(l.url)}
                 onChange={(e) =>
                   setLinks((ls) =>
                     ls.map((x) => (x.id === l.id ? { ...x, url: e.target.value } : x))

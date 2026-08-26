@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { guard } from "@/lib/adminApi";
+import { normalizeLinkUrl } from "@/lib/linkTarget";
 
 export const dynamic = "force-dynamic";
 
@@ -20,8 +21,11 @@ export async function POST(req: Request) {
   const label = String(b.label || "").trim();
   let url = String(b.url || "").trim();
   if (!label || !url)
-    return NextResponse.json({ error: "Label and URL required" }, { status: 400 });
-  if (!/^(https?:|mailto:|tel:)/i.test(url)) url = `https://${url}`;
+    return NextResponse.json(
+      { error: "Label and a link, phone number or email are required" },
+      { status: 400 }
+    );
+  url = normalizeLinkUrl(url);
   const count = await prisma.linkItem.count();
   const link = await prisma.linkItem.create({
     data: {
@@ -43,9 +47,7 @@ export async function PATCH(req: Request) {
   const data: Record<string, unknown> = {};
   if (b.label !== undefined) data.label = String(b.label).slice(0, 80);
   if (b.url !== undefined) {
-    let url = String(b.url).trim();
-    if (url && !/^(https?:|mailto:|tel:)/i.test(url)) url = `https://${url}`;
-    data.url = url.slice(0, 500);
+    data.url = normalizeLinkUrl(String(b.url)).slice(0, 500);
   }
   if (b.icon !== undefined) data.icon = String(b.icon).slice(0, 500);
   if (b.active !== undefined) data.active = Boolean(b.active);

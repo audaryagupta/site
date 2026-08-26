@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Mail, Phone } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { site } from "@/lib/site";
 import { LinkIcon } from "@/lib/linkIcons";
@@ -62,10 +62,16 @@ export default async function LinkHubPage() {
                 <LinkIcon icon={l.icon} size={22} />
               </span>
               <span className="flex-1 text-sm font-medium">{l.label}</span>
-              <ArrowUpRight
-                size={18}
-                className="text-muted transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-foreground"
-              />
+              {/^tel:/i.test(l.url) ? (
+                <Phone size={17} className="text-muted transition group-hover:text-foreground" />
+              ) : /^mailto:/i.test(l.url) ? (
+                <Mail size={17} className="text-muted transition group-hover:text-foreground" />
+              ) : (
+                <ArrowUpRight
+                  size={18}
+                  className="text-muted transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-foreground"
+                />
+              )}
             </a>
           ))}
           {links.length === 0 && (
