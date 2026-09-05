@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { site } from "@/lib/site";
 import { LinkIcon } from "@/lib/linkIcons";
 import { LogoMark } from "@/components/Logo";
+import { SubscribeForm } from "@/components/SubscribeForm";
 import { getSiteContent, pickText } from "@/lib/siteContent";
 import { QR_QUOTE_DEFAULT, TAGLINE_DEFAULT } from "@/lib/siteText";
 
@@ -80,6 +81,18 @@ export default async function LinkHubPage() {
             </p>
           )}
         </div>
+
+        <section
+          className="mt-8 w-full animate-fade-up rounded-2xl border border-line bg-card/80 p-5 shadow-sm backdrop-blur"
+          style={{ animationDelay: `${260 + links.length * 55}ms` }}
+        >
+          <h2 className="font-serif text-lg italic">Join my mailing list</h2>
+          <p className="mt-1 mb-4 text-xs text-muted">
+            A weekly recap of what caught my attention — no spam, unsubscribe
+            anytime.
+          </p>
+          <SubscribeForm compact />
+        </section>
 
         <Link
           href="/"

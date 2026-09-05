@@ -33,7 +33,7 @@ export default function OpengraphImage() {
             Audarya Gupta
           </div>
           <div style={{ marginTop: 28, fontSize: 34, color: "#555" }}>
-            Essays on finance, business, technology & public life.
+            Essays on finance, business, technology & markets.
           </div>
         </div>
         <div

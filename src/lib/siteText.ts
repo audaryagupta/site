@@ -27,7 +27,7 @@ export const QR_QUOTE_DEFAULT = "Well, you did end up scanning my QR code!";
 
 export const ABOUT_BIO_DEFAULT = `Hi, I’m Audarya — someone who has always been fascinated by the forces that drive economies, shape global affairs, and influence financial markets. My curiosity about finance, geopolitics, and history led me to take a gap year after my 12th grade and go down the exploration road. In the past I've interned at organizations like the Government of India, Hindustan Times, and Gulf News Dubai, gaining insights into finance, media, and governance along the way.
 
-I have an ever-going quest to share whatever knowledge I have. I believe any information that leaves you becomes 2x more useful than it would have been constricted to you — which led me to start The VentureBuz Forum to support students in developing entrepreneurial skills through competitions and business clubs. My passion for finance and problem-solving also led me to author a book.
+I have an ever-going quest to share whatever knowledge I have. I believe any information that leaves you becomes 2x more useful than it would have been constricted to you — which led me to start The Venturebuz Forum to support students in developing entrepreneurial skills through competitions and business clubs. My passion for finance and problem-solving also led me to author a book.
 
 Apart from these pursuits, I enjoy learning languages — I speak French semi-fluently and am currently learning Spanish and Sanskrit to expand my global perspective. Through this blog, I hope to share my insights on finance, innovation, history, and geopolitics while documenting my journey of continuous learning.
 
@@ -68,7 +68,7 @@ export const SITE_TEXT_GROUPS: SiteTextGroup[] = [
         id: "home.hero.sub",
         label: "Sub-headline",
         default:
-          "Essays, field notes and curated briefings on finance, history, public life, technology and the questions that keep returning.",
+          "Essays, field notes and curated briefings on finance, history, business, technology and the questions that keep returning.",
         multiline: true,
       },
     ],
@@ -113,14 +113,14 @@ export const SITE_TEXT_GROUPS: SiteTextGroup[] = [
     fields: [
       { id: "about.eyebrow", label: "Eyebrow", default: "About Me" },
       { id: "about.title", label: "Name / heading", default: "Audarya Gupta" },
-      { id: "about.role", label: "Role line", default: "Founder, byAudarya & VentureBuz" },
+      { id: "about.role", label: "Role line", default: "Founder, byAudarya & Venturebuz" },
       { id: "about.bio", label: "The write-up about you", default: ABOUT_BIO_DEFAULT, multiline: true },
       { id: "about.connect.label", label: "Sidebar “Connect” label", default: "Connect" },
       { id: "about.connect.body", label: "Sidebar connect text", default: "Essays, collaborations, speaking requests and appointments start with a simple message.", multiline: true },
       { id: "about.theme1.title", label: "Theme 1 title", default: "Finance" },
       { id: "about.theme1.body", label: "Theme 1 text", default: "Markets, business models, incentives and the stories behind capital.", multiline: true },
-      { id: "about.theme2.title", label: "Theme 2 title", default: "Public life" },
-      { id: "about.theme2.body", label: "Theme 2 text", default: "Governance, institutions and the ideas that shape decisions.", multiline: true },
+      { id: "about.theme2.title", label: "Theme 2 title", default: "Business" },
+      { id: "about.theme2.body", label: "Theme 2 text", default: "Companies, strategy and how industries actually make money.", multiline: true },
       { id: "about.theme3.title", label: "Theme 3 title", default: "Writing" },
       { id: "about.theme3.body", label: "Theme 3 text", default: "Turning research and observation into essays people can return to.", multiline: true },
     ],

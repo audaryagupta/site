@@ -6,5 +6,8 @@ set -e
 mkdir -p /data
 node ./node_modules/prisma/build/index.js db push --skip-generate --accept-data-loss || true
 
+# Idempotent content seed (article drafts, brand spelling fixes).
+node ./scripts/seed-drafts.mjs || true
+
 # Start the Next.js standalone server.
 exec node server.js

@@ -26,14 +26,14 @@ export default async function AboutPage() {
   const bio = pickText(content, "about.bio", settings.about_bio || ABOUT_BIO_DEFAULT);
   const themes: [string, string][] = [
     [pickStr(content, "about.theme1.title", "Finance"), pickStr(content, "about.theme1.body", "Markets, business models, incentives and the stories behind capital.")],
-    [pickStr(content, "about.theme2.title", "Public life"), pickStr(content, "about.theme2.body", "Governance, institutions and the ideas that shape decisions.")],
+    [pickStr(content, "about.theme2.title", "Business"), pickStr(content, "about.theme2.body", "Companies, strategy and how industries actually make money.")],
     [pickStr(content, "about.theme3.title", "Writing"), pickStr(content, "about.theme3.body", "Turning research and observation into essays people can return to.")],
   ];
   const title = pickText(content, "about.title", settings.about_title || "Audarya Gupta");
   const role = pickText(
     content,
     "about.role",
-    settings.about_role || "Founder, byAudarya & VentureBuz"
+    settings.about_role || "Founder, byAudarya & Venturebuz"
   );
   const portrait = pickImage(content, "about.image", {
     src: settings.about_image || "/audarya/audarya-portrait-red.jpg",

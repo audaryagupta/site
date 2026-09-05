@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 const notes = [
   "Finance",
   "History",
-  "Public life",
+  "Business",
   "Technology",
   "Markets",
   "Curiosity",
@@ -36,7 +36,7 @@ export default async function HomePage() {
   const heroSub = pickText(
     content,
     "home.hero.sub",
-    "Essays, field notes and curated briefings on finance, history, public life, technology and the questions that keep returning."
+    "Essays, field notes and curated briefings on finance, history, business, technology and the questions that keep returning."
   );
   const heroPrimary = pickButton(content, "home.hero.primary", "Read the writings", "/writings");
   const heroSecondary = pickButton(content, "home.hero.secondary", "Get the Weekly Recap", "/newsletter");
