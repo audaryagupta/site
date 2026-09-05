@@ -290,10 +290,15 @@ async function seedDrafts() {
 async function fixBrandSpelling() {
   const rows = await prisma.setting.findMany();
   for (const row of rows) {
-    if (!/VentureBuz/.test(row.value)) continue;
+    const value = row.value
+      .replace(/VentureBuz/g, "Venturebuz")
+      .replace(/history, public life, technology/gi, "history, business, technology")
+      .replace(/, technology & public life/gi, ", technology & markets")
+      .replace(/^Public life$/i, "Business");
+    if (value === row.value) continue;
     await prisma.setting.update({
       where: { key: row.key },
-      data: { value: row.value.replace(/VentureBuz/g, "Venturebuz") },
+      data: { value },
     });
     console.log(`fixed spelling in setting: ${row.key}`);
   }
