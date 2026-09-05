@@ -304,8 +304,65 @@ async function fixBrandSpelling() {
   }
 }
 
+const wm = (path) =>
+  `https://upload.wikimedia.org/wikipedia/commons/thumb/${path}`;
+
+// Open-licence covers + backdated publish dates (IST). Applied once: only to
+// seeded articles that are still drafts without a cover, so later edits in
+// Studio are never overwritten.
+const covers = {
+  "the-aviation-economy-who-actually-makes-money-when-a-plane-takes-off": {
+    date: "2026-01-18T09:30:00+05:30",
+    image: wm("d/d8/Boeing_787_Dreamliner_over_North_Charleston_%2813925787693%29.jpg/1920px-Boeing_787_Dreamliner_over_North_Charleston_%2813925787693%29.jpg"),
+    credit: "Photo: North Charleston, CC BY-SA 2.0, via Wikimedia Commons",
+  },
+  "new-york-is-still-open-notes-on-a-city-doing-business": {
+    date: "2026-03-03T09:30:00+05:30",
+    image: wm("7/79/Midtown_Manhattan_skyline_from_the_One_World_Observatory%2C_New_York_City.jpg/1920px-Midtown_Manhattan_skyline_from_the_One_World_Observatory%2C_New_York_City.jpg"),
+    credit: "Photo: Christian David, CC BY-SA 4.0, via Wikimedia Commons",
+  },
+  "global-shipping-in-2026-the-boom-nobody-planned-and-the-automation-that-is": {
+    date: "2026-04-21T09:30:00+05:30",
+    image: wm("1/11/Container_ship_NYK_Themis_at_the_Port_of_Los_Angeles.jpg/1920px-Container_ship_NYK_Themis_at_the_Port_of_Los_Angeles.jpg"),
+    credit: "Photo: Downtowngal, CC BY-SA 4.0, via Wikimedia Commons",
+  },
+  "the-fall-of-london-and-why-i-think-the-crash-is-the-opportunity": {
+    date: "2026-06-09T09:30:00+05:30",
+    image: wm("a/a3/Skyline_towards_Canary_Wharf.jpg/1920px-Skyline_towards_Canary_Wharf.jpg"),
+    credit: "Photo: Acabashi, CC BY-SA 4.0, via Wikimedia Commons",
+  },
+  "ten-jobs-that-will-be-much-rarer-by-the-end-of-2026": {
+    date: "2026-07-27T09:30:00+05:30",
+    image: wm("d/d9/Seattle_City_Light_offices%2C_1960s_%2832777180858%29.jpg/1920px-Seattle_City_Light_offices%2C_1960s_%2832777180858%29.jpg"),
+    credit: "Photo: Seattle Municipal Archives, CC BY 2.0, via Wikimedia Commons",
+  },
+  "the-private-credit-boom-explained-in-ten-questions": {
+    date: "2026-08-24T09:30:00+05:30",
+    image: wm("e/ec/Wall_Street_-_New_York_Stock_Exchange.jpg/1920px-Wall_Street_-_New_York_Stock_Exchange.jpg"),
+    credit: "Photo: Carlos Delgado, CC BY-SA 3.0, via Wikimedia Commons",
+  },
+};
+
+async function publishSeeded() {
+  for (const [slug, c] of Object.entries(covers)) {
+    const row = await prisma.article.findUnique({ where: { slug } });
+    if (!row || row.status !== "draft" || row.coverImage) continue;
+    await prisma.article.update({
+      where: { slug },
+      data: {
+        coverImage: c.image,
+        coverCredit: c.credit,
+        status: "published",
+        publishedAt: new Date(c.date),
+      },
+    });
+    console.log(`published seeded article: ${slug}`);
+  }
+}
+
 try {
   await seedDrafts();
+  await publishSeeded();
   await fixBrandSpelling();
 } finally {
   await prisma.$disconnect();
